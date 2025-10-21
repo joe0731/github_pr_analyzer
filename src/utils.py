@@ -26,7 +26,7 @@ SOFTWARE.
 """
 
 import subprocess
-from typing import Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 from datetime import datetime, timedelta
 from rich.console import Console
 
@@ -145,6 +145,52 @@ def get_date_filter_by_days(days: int) -> str:
 
     date = datetime.now() - timedelta(days=days)
     return date.strftime("%Y-%m-%d")
+
+
+def normalize_text(text: str) -> str:
+    """
+    normalize text by lowercasing and trimming whitespace.
+
+    Args:
+        text: text to normalize
+
+    Returns:
+        str: normalized text
+    """
+    if text is None:
+        return ""
+
+    normalized = text.lower()
+    normalized = normalized.strip()
+    return normalized
+
+
+def normalize_keywords(keywords: Iterable[str]) -> List[str]:
+    """
+    normalize keywords by lowercasing and removing duplicates.
+
+    Args:
+        keywords: iterable of keywords
+
+    Returns:
+        list: normalized unique keywords preserving order
+    """
+    seen = set()
+    normalized_keywords: List[str] = []
+
+    for keyword in keywords:
+        if keyword is None:
+            continue
+
+        normalized = normalize_text(keyword)
+        if not normalized:
+            continue
+
+        if normalized not in seen:
+            seen.add(normalized)
+            normalized_keywords.append(normalized)
+
+    return normalized_keywords
 
 
 def format_pr_url(repo: str, pr_number: int) -> str:

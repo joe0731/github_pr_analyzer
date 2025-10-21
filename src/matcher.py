@@ -26,13 +26,13 @@ SOFTWARE.
 """
 
 import re
-from typing import List, Dict, Union, Tuple
-from fuzzywuzzy import fuzz
+from typing import Dict, List, Optional, Tuple, Union
 from rich.console import Console
 
 from .pr_collector import PullRequest
 from .commit_collector import Commit
 from .smart_search_analyzer import SmartSearchAnalyzer
+from .utils import normalize_keywords, normalize_text
 
 console = Console()
 
@@ -76,50 +76,28 @@ class Matcher:
         self.use_smart_search = use_smart_search
         self.smart_analyzer = SmartSearchAnalyzer() if use_smart_search else None
 
-    def _normalize_text(self, text: str) -> str:
+    def _calculate_keyword_weight(
+        self,
+        keyword_hits: Dict[str, int],
+        base_weight: float,
+    ) -> int:
         """
-        normalize text for matching.
+        calculate keyword-based score contribution.
 
         Args:
-            text: text to normalize
+            keyword_hits: mapping of keyword to hit count
+            base_weight: weight assigned for the field
 
         Returns:
-            str: normalized text
+            int: weighted score based on keyword matches
         """
-        text = text.lower()
-        text = re.sub(r"[^\w\s]", " ", text)
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
+        total_hits = sum(keyword_hits.values())
+        if total_hits == 0:
+            return 0
 
-    def _calculate_score(
-        self, query: str, text: str, field_weight: float = 1.0
-    ) -> Tuple[int, bool]:
-        """
-        calculate match score between query and text.
+        return int(min(100, total_hits * 20 * base_weight))
 
-        Args:
-            query: search query
-            text: text to search in
-            field_weight: weight for this field (0.0-1.0)
-
-        Returns:
-            tuple: (score, is_match)
-        """
-        query_norm = self._normalize_text(query)
-        text_norm = self._normalize_text(text)
-
-        if query_norm in text_norm:
-            score = 100
-            is_match = True
-        else:
-            score = fuzz.partial_ratio(query_norm, text_norm)
-            is_match = score >= self.fuzzy_threshold
-
-        weighted_score = int(score * field_weight)
-
-        return weighted_score, is_match
-
-    def match_pr(self, pr: PullRequest, query: str) -> MatchResult:
+    def match_pr(self, pr: PullRequest, keywords: List[str]) -> MatchResult:
         """
         match a PR against a query.
 
@@ -140,42 +118,75 @@ class Matcher:
             "labels": 0.6,
         }
 
-        title_score, title_match = self._calculate_score(
-            query, pr.title, field_weights["title"]
-        )
-        if title_match:
+        normalized_keywords = normalize_keywords(keywords)
+
+        # analyze title
+        title_hits: Dict[str, int] = {}
+        title_lower = normalize_text(pr.title)
+        for keyword in normalized_keywords:
+            if keyword and keyword in title_lower:
+                title_hits[keyword] = title_hits.get(keyword, 0) + 1
+
+        if title_hits:
+            title_score = self._calculate_keyword_weight(
+                title_hits, field_weights["title"]
+            )
             total_score += title_score
             matched_fields.append("title")
 
-        body_score, body_match = self._calculate_score(
-            query, pr.body, field_weights["body"]
-        )
-        if body_match:
-            total_score += body_score
-            matched_fields.append("body")
+        # analyze body
+        if pr.body:
+            body_hits: Dict[str, int] = {}
+            body_lower = normalize_text(pr.body)
+            for keyword in normalized_keywords:
+                if keyword and keyword in body_lower:
+                    body_hits[keyword] = body_hits.get(keyword, 0) + 1
 
-        author_score, author_match = self._calculate_score(
-            query, pr.author, field_weights["author"]
-        )
-        if author_match:
+            if body_hits:
+                body_score = self._calculate_keyword_weight(
+                    body_hits, field_weights["body"]
+                )
+                total_score += body_score
+                matched_fields.append("body")
+
+        # analyze author
+        author_hits: Dict[str, int] = {}
+        author_lower = normalize_text(pr.author)
+        for keyword in normalized_keywords:
+            if keyword and keyword in author_lower:
+                author_hits[keyword] = author_hits.get(keyword, 0) + 1
+
+        if author_hits:
+            author_score = self._calculate_keyword_weight(
+                author_hits, field_weights["author"]
+            )
             total_score += author_score
             matched_fields.append("author")
 
+        # analyze labels
         if pr.labels:
-            labels_text = " ".join(pr.labels)
-            labels_score, labels_match = self._calculate_score(
-                query, labels_text, field_weights["labels"]
-            )
-            if labels_match:
+            labels_hits: Dict[str, int] = {}
+            labels_lower = normalize_text(" ".join(pr.labels))
+            for keyword in normalized_keywords:
+                if keyword and keyword in labels_lower:
+                    labels_hits[keyword] = labels_hits.get(keyword, 0) + 1
+
+            if labels_hits:
+                labels_score = self._calculate_keyword_weight(
+                    labels_hits, field_weights["labels"]
+                )
                 total_score += labels_score
                 matched_fields.append("labels")
 
-        max_possible_score = sum(field_weights.values()) * 100
-        normalized_score = min(100, int((total_score / max_possible_score) * 100))
+        normalized_score = min(100, total_score)
 
         return MatchResult(pr, normalized_score, matched_fields)
 
-    def match_commit(self, commit: Commit, query: str) -> MatchResult:
+    def match_commit(
+        self,
+        commit: Commit,
+        keywords: List[str],
+    ) -> MatchResult:
         """
         match a commit against a query.
 
@@ -191,25 +202,40 @@ class Matcher:
 
         field_weights = {
             "message": 1.0,
-            "author": 0.5,
+            "author": 0.4,
         }
 
-        message_score, message_match = self._calculate_score(
-            query, commit.message, field_weights["message"]
-        )
-        if message_match:
+        normalized_keywords = normalize_keywords(keywords)
+
+        # commit message
+        message_hits: Dict[str, int] = {}
+        message_lower = normalize_text(commit.message)
+        for keyword in normalized_keywords:
+            if keyword and keyword in message_lower:
+                message_hits[keyword] = message_hits.get(keyword, 0) + 1
+
+        if message_hits:
+            message_score = self._calculate_keyword_weight(
+                message_hits, field_weights["message"]
+            )
             total_score += message_score
             matched_fields.append("message")
 
-        author_score, author_match = self._calculate_score(
-            query, commit.author, field_weights["author"]
-        )
-        if author_match:
+        # commit author
+        author_hits: Dict[str, int] = {}
+        author_lower = normalize_text(commit.author)
+        for keyword in normalized_keywords:
+            if keyword and keyword in author_lower:
+                author_hits[keyword] = author_hits.get(keyword, 0) + 1
+
+        if author_hits:
+            author_score = self._calculate_keyword_weight(
+                author_hits, field_weights["author"]
+            )
             total_score += author_score
             matched_fields.append("author")
 
-        max_possible_score = sum(field_weights.values()) * 100
-        normalized_score = min(100, int((total_score / max_possible_score) * 100))
+        normalized_score = min(100, total_score)
 
         return MatchResult(commit, normalized_score, matched_fields)
 
@@ -262,50 +288,23 @@ class Matcher:
         # search with each keyword and combine results
         all_results = {}  # item_id -> MatchResult
 
-        for i, keyword in enumerate(keywords):
-            # weight keywords by position (first keywords are more important)
-            keyword_weight = 1.0 - (i * 0.1)  # decrease weight by 10% for each position
-            keyword_weight = max(keyword_weight, 0.3)  # minimum weight of 30%
+        normalized_keywords = normalize_keywords(keywords)
 
-            # search PRs
-            for pr in prs:
-                item_id = f"pr_{pr.number}"
-                match = self.match_pr(pr, keyword)
+        # search PRs
+        for pr in prs:
+            item_id = f"pr_{pr.number}"
+            match = self.match_pr(pr, normalized_keywords)
 
-                if match.score >= min_score:
-                    weighted_score = int(match.score * keyword_weight)
+            if match.score >= min_score:
+                all_results[item_id] = match
 
-                    if item_id in all_results:
-                        # combine scores (take maximum but add bonus for multiple matches)
-                        existing_score = all_results[item_id].score
-                        combined_score = max(existing_score, weighted_score) + min(
-                            10, weighted_score // 10
-                        )
-                        all_results[item_id].score = min(100, combined_score)
-                        all_results[item_id].matched_fields.extend(match.matched_fields)
-                    else:
-                        match.score = weighted_score
-                        all_results[item_id] = match
+        # search commits
+        for commit in commits:
+            item_id = f"commit_{commit.sha}"
+            match = self.match_commit(commit, normalized_keywords)
 
-            # search commits
-            for commit in commits:
-                item_id = f"commit_{commit.sha}"
-                match = self.match_commit(commit, keyword)
-
-                if match.score >= min_score:
-                    weighted_score = int(match.score * keyword_weight)
-
-                    if item_id in all_results:
-                        # combine scores
-                        existing_score = all_results[item_id].score
-                        combined_score = max(existing_score, weighted_score) + min(
-                            10, weighted_score // 10
-                        )
-                        all_results[item_id].score = min(100, combined_score)
-                        all_results[item_id].matched_fields.extend(match.matched_fields)
-                    else:
-                        match.score = weighted_score
-                        all_results[item_id] = match
+            if match.score >= min_score:
+                all_results[item_id] = match
 
         # convert to list and sort
         results = list(all_results.values())
@@ -365,13 +364,15 @@ class Matcher:
 
         results = []
 
+        normalized_keywords = normalize_keywords([query])
+
         for pr in prs:
-            match = self.match_pr(pr, query)
+            match = self.match_pr(pr, normalized_keywords)
             if match.score >= min_score:
                 results.append(match)
 
         for commit in commits:
-            match = self.match_commit(commit, query)
+            match = self.match_commit(commit, normalized_keywords)
             if match.score >= min_score:
                 results.append(match)
 
@@ -409,44 +410,41 @@ class Matcher:
 
         results_by_item = {}
 
-        for keyword in keywords:
-            for pr in prs:
-                match = self.match_pr(pr, keyword)
+        normalized_keywords = normalize_keywords(keywords)
 
-                item_key = f"pr_{pr.number}"
-                if item_key not in results_by_item:
-                    results_by_item[item_key] = {
-                        "item": pr,
-                        "scores": [],
-                        "matched_fields": set(),
-                        "keyword_matches": 0,
-                    }
+        for pr in prs:
+            match = self.match_pr(pr, normalized_keywords)
 
-                if match.score >= min_score:
-                    results_by_item[item_key]["scores"].append(match.score)
-                    results_by_item[item_key]["matched_fields"].update(
-                        match.matched_fields
-                    )
-                    results_by_item[item_key]["keyword_matches"] += 1
+            item_key = f"pr_{pr.number}"
+            if item_key not in results_by_item:
+                results_by_item[item_key] = {
+                    "item": pr,
+                    "scores": [],
+                    "matched_fields": set(),
+                    "keyword_matches": 0,
+                }
 
-            for commit in commits:
-                match = self.match_commit(commit, keyword)
+            if match.score >= min_score:
+                results_by_item[item_key]["scores"].append(match.score)
+                results_by_item[item_key]["matched_fields"].update(match.matched_fields)
+                results_by_item[item_key]["keyword_matches"] += 1
 
-                item_key = f"commit_{commit.sha}"
-                if item_key not in results_by_item:
-                    results_by_item[item_key] = {
-                        "item": commit,
-                        "scores": [],
-                        "matched_fields": set(),
-                        "keyword_matches": 0,
-                    }
+        for commit in commits:
+            match = self.match_commit(commit, normalized_keywords)
 
-                if match.score >= min_score:
-                    results_by_item[item_key]["scores"].append(match.score)
-                    results_by_item[item_key]["matched_fields"].update(
-                        match.matched_fields
-                    )
-                    results_by_item[item_key]["keyword_matches"] += 1
+            item_key = f"commit_{commit.sha}"
+            if item_key not in results_by_item:
+                results_by_item[item_key] = {
+                    "item": commit,
+                    "scores": [],
+                    "matched_fields": set(),
+                    "keyword_matches": 0,
+                }
+
+            if match.score >= min_score:
+                results_by_item[item_key]["scores"].append(match.score)
+                results_by_item[item_key]["matched_fields"].update(match.matched_fields)
+                results_by_item[item_key]["keyword_matches"] += 1
 
         results = []
         for item_data in results_by_item.values():
