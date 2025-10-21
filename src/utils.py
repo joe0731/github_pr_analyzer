@@ -38,6 +38,7 @@ def run_command(
     cwd: Optional[str] = None,
     capture_output: bool = True,
     check: bool = True,
+    input_data: Optional[str] = None,
 ) -> Tuple[int, str, str]:
     """
     run a shell command safely.
@@ -53,7 +54,12 @@ def run_command(
     """
     try:
         result = subprocess.run(
-            command, cwd=cwd, capture_output=capture_output, text=True, check=False
+            command,
+            cwd=cwd,
+            capture_output=capture_output,
+            text=True,
+            check=False,
+            input=input_data,
         )
 
         if check and result.returncode != 0:
