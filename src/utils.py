@@ -124,6 +124,23 @@ def get_date_filter(months: int) -> str:
     return date.strftime("%Y-%m-%d")
 
 
+def get_date_filter_by_days(days: int) -> str:
+    """
+    get date string for filtering PRs using days.
+
+    Args:
+        days: number of days to look back
+
+    Returns:
+        str: date string in ISO format
+    """
+    if days <= 0:
+        raise ValueError("days must be a positive integer")
+
+    date = datetime.now() - timedelta(days=days)
+    return date.strftime("%Y-%m-%d")
+
+
 def format_pr_url(repo: str, pr_number: int) -> str:
     """
     format a GitHub PR URL.

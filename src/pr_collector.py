@@ -31,7 +31,12 @@ from datetime import datetime
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .utils import run_command, get_date_filter, validate_repo_format
+from .utils import (
+    run_command,
+    get_date_filter,
+    get_date_filter_by_days,
+    validate_repo_format,
+)
 
 console = Console()
 
@@ -146,14 +151,23 @@ class PRCollector:
         except Exception as e:
             raise RuntimeError(f"failed to detect repository: {str(e)}") from e
 
-    def collect_open_prs(self) -> List[PullRequest]:
+    def collect_open_prs(self, days: Optional[int] = None) -> List[PullRequest]:
         """
         collect all open Pull Requests.
 
         Returns:
             list: list of PullRequest objects
         """
-        console.print(f"[cyan]Collecting open PRs from {self.repo}...[/cyan]")
+        if days is not None and days <= 0:
+            console.print("[red]days must be a positive integer[/red]")
+            return []
+
+        if days is not None:
+            console.print(
+                f"[cyan]Collecting open PRs from {self.repo} (last {days} days)...[/cyan]"
+            )
+        else:
+            console.print(f"[cyan]Collecting open PRs from {self.repo}...[/cyan]")
 
         try:
             command = [
@@ -170,6 +184,10 @@ class PRCollector:
                 "1000",
             ]
 
+            if days is not None:
+                date_filter = get_date_filter_by_days(days)
+                command.extend(["--search", f"created:>={date_filter}"])
+
             _, stdout, _ = run_command(command)
 
             pr_data = json.loads(stdout)
@@ -182,7 +200,11 @@ class PRCollector:
             console.print(f"[red]Error collecting open PRs: {str(e)}[/red]")
             return []
 
-    def collect_merged_prs(self, months: int = 3) -> List[PullRequest]:
+    def collect_merged_prs(
+        self,
+        months: Optional[int] = None,
+        days: Optional[int] = None,
+    ) -> List[PullRequest]:
         """
         collect merged Pull Requests from the last N months.
 
@@ -192,12 +214,32 @@ class PRCollector:
         Returns:
             list: list of PullRequest objects
         """
+        if months is not None and months <= 0:
+            console.print("[red]months must be a positive integer[/red]")
+            return []
+
+        if days is not None and days <= 0:
+            console.print("[red]days must be a positive integer[/red]")
+            return []
+
+        time_range_text = None
+        if days is not None:
+            time_range_text = f"{days} days"
+        elif months is not None:
+            time_range_text = f"{months} months"
+        else:
+            months = 3
+            time_range_text = "3 months"
+
         console.print(
-            f"[cyan]Collecting merged PRs from the last {months} months...[/cyan]"
+            f"[cyan]Collecting merged PRs from the last {time_range_text}...[/cyan]"
         )
 
         try:
-            date_filter = get_date_filter(months)
+            if days is not None:
+                date_filter = get_date_filter_by_days(days)
+            else:
+                date_filter = get_date_filter(months)
 
             command = [
                 "gh",
@@ -227,12 +269,17 @@ class PRCollector:
             console.print(f"[red]Error collecting merged PRs: {str(e)}[/red]")
             return []
 
-    def collect_all_prs(self, months: int = 3) -> Dict[str, List[PullRequest]]:
+    def collect_all_prs(
+        self,
+        months: int = 3,
+        days: Optional[int] = None,
+    ) -> Dict[str, List[PullRequest]]:
         """
         collect all PRs (open and merged).
 
         Args:
             months: number of months to look back for merged PRs
+            days: number of days to look back when provided
 
         Returns:
             dict: dictionary with 'open' and 'merged' lists
@@ -244,8 +291,12 @@ class PRCollector:
         ) as progress:
             task = progress.add_task("Collecting PRs...", total=None)
 
-            open_prs = self.collect_open_prs()
-            merged_prs = self.collect_merged_prs(months)
+            if days is not None:
+                open_prs = self.collect_open_prs(days=days)
+            else:
+                open_prs = self.collect_open_prs()
+
+            merged_prs = self.collect_merged_prs(months=months, days=days)
 
             progress.update(task, completed=True)
 

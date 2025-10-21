@@ -26,7 +26,7 @@ SOFTWARE.
 """
 
 import sys
-from typing import Optional
+from typing import List, Optional, Tuple
 from pathlib import Path
 import click
 from rich.console import Console
@@ -36,7 +36,7 @@ from rich.prompt import Prompt, Confirm
 
 from .config import config
 from .utils import check_gh_cli, check_git, format_datetime
-from .pr_collector import PRCollector
+from .pr_collector import PRCollector, PullRequest
 from .commit_collector import CommitCollector
 from .diff_viewer import DiffViewer
 from .matcher import Matcher, MatchResult
@@ -532,6 +532,99 @@ def interactive():
     except KeyboardInterrupt:
         console.print("\n\n[cyan]Interrupted by user[/cyan]")
         sys.exit(0)
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option(
+    "--repo",
+    "-r",
+    help="Repository in format owner/repo (auto-detect if not specified)",
+)
+@click.option(
+    "--days",
+    "-d",
+    type=int,
+    default=60,
+    help="Number of days to look back for PR traversal",
+)
+def traverse(repo: Optional[str], days: int):
+    """Traverse recent PRs and analyze them with AI."""
+    print_banner()
+
+    if not check_prerequisites():
+        sys.exit(1)
+
+    if days <= 0:
+        console.print("[red]Days must be a positive integer[/red]")
+        sys.exit(1)
+
+    ai_analyzer = AIAnalyzer()
+    if not ai_analyzer.is_available:
+        console.print(
+            "[red]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/red]"
+        )
+        sys.exit(1)
+
+    try:
+        pr_collector = PRCollector(repo)
+        console.print(f"\n[bold]Repository:[/bold] {pr_collector.repo}\n")
+
+        all_prs = pr_collector.collect_all_prs(days=days)
+        open_prs = all_prs.get("open", [])
+        merged_prs = all_prs.get("merged", [])
+
+        console.print("[bold cyan]Traversal summary:[/bold cyan]")
+        console.print(f"  • Open PRs (last {days} days): {len(open_prs)}")
+        console.print(f"  • Merged PRs (last {days} days): {len(merged_prs)}")
+
+        if not open_prs and not merged_prs:
+            console.print("[yellow]No PRs found in the specified range[/yellow]")
+            return
+
+        diff_viewer = DiffViewer(repo_name=pr_collector.repo)
+
+        analyzed_items: List[Tuple[PullRequest, Optional[str]]] = []
+
+        def analyze_pr_group(prs: List[PullRequest], label: str) -> None:
+            if not prs:
+                console.print(f"[yellow]No {label.lower()} to analyze[/yellow]")
+                return
+
+            console.print(f"\n[bold cyan]Analyzing {label}...[/bold cyan]")
+
+            total = len(prs)
+            for index, pr in enumerate(prs, start=1):
+                console.print(
+                    f"\n[bold]Analyzing {label[:-1]} {index}/{total}: PR #{pr.number}[/bold]"
+                )
+                analysis = ai_analyzer.analyze(
+                    pr,
+                    include_diff=True,
+                    diff_viewer=diff_viewer,
+                )
+                analyzed_items.append((pr, analysis))
+                if analysis:
+                    ai_analyzer.display_analysis(pr, analysis)
+
+        analyze_pr_group(merged_prs, "Merged PRs")
+        analyze_pr_group(open_prs, "Open PRs")
+
+        if analyzed_items:
+            save_report = Confirm.ask("\nSave traversal analysis report?", default=False)
+            if save_report:
+                report = ai_analyzer.generate_summary_report(
+                    analyzed_items,
+                    query=f"Traversal analysis for last {days} days",
+                )
+                report_file = (
+                    f"pr_traversal_report_{pr_collector.repo.replace('/', '_')}_{days}d.md"
+                )
+                Path(report_file).write_text(report)
+                console.print(f"[green]✓ Report saved to: {report_file}[/green]")
+
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)
