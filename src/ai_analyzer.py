@@ -26,6 +26,7 @@ SOFTWARE.
 """
 
 import json
+from pathlib import Path
 from typing import Optional, List, Union
 from rich.console import Console
 from rich.markdown import Markdown
