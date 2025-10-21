@@ -155,13 +155,13 @@ def display_results_table(results: list[MatchResult]):
     console.print(table)
 
 
-@click.group()
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def cli():
     """GitHub PR and Commit Analyzer - Find and analyze relevant changes."""
     pass
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "--repo",
     "-r",
@@ -204,7 +204,7 @@ def collect(repo: Optional[str], months: int):
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("query")
 @click.option("--repo", "-r", help="Repository in format owner/repo")
 @click.option("--months", "-m", type=int, default=3, help="Months to look back")
@@ -301,7 +301,7 @@ def search(
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("pr_number", type=int)
 @click.option("--repo", "-r", help="Repository in format owner/repo")
 @click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
@@ -364,7 +364,7 @@ def view_pr(pr_number: int, repo: Optional[str], analyze: bool):
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("commit_sha")
 @click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
 def view_commit(commit_sha: str, analyze: bool):
@@ -424,7 +424,7 @@ def view_commit(commit_sha: str, analyze: bool):
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 def interactive():
     """Interactive mode for exploring PRs and commits."""
     print_banner()
@@ -537,7 +537,7 @@ def interactive():
         sys.exit(1)
 
 
-@cli.command()
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
     "--repo",
     "-r",

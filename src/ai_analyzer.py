@@ -26,9 +26,7 @@ SOFTWARE.
 """
 
 import json
-import tempfile
 from typing import Optional, List, Union
-from pathlib import Path
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -215,17 +213,16 @@ Focus on technical depth.
         prompt = self._create_analysis_prompt(item, diff_content, analysis_type)
 
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", delete=False
-            ) as f:
-                f.write(prompt)
-                prompt_file = f.name
-
-            command = [self.cursor_agent_path, "--file", prompt_file]
+            command = [
+                self.cursor_agent_path,
+                "--print",
+                "--output-format",
+                "text",
+                "agent",
+                prompt,
+            ]
 
             _, stdout, stderr = run_command(command, check=False)
-
-            Path(prompt_file).unlink()
 
             if stderr:
                 console.print(f"[yellow]Warning: {stderr}[/yellow]")
