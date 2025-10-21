@@ -33,7 +33,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="github-pr-analyzer",
-    version="1.0.0",
+    version="2.0.0",
     author="GitHub PR Analyzer Team",
     description="Intelligent tool for collecting, analyzing, and summarizing GitHub Pull Requests and commits",
     long_description=long_description,
@@ -56,7 +56,6 @@ setup(
     install_requires=[
         "click>=8.1.0",
         "rich>=13.0.0",
-        "python-dotenv>=1.0.0",
         "requests>=2.31.0",
         "gitpython>=3.1.40",
         "python-dateutil>=2.8.2",

@@ -7,6 +7,46 @@ All notable changes to GitHub PR Analyzer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-01-21
+
+### Added
+- 🔍 **AI-Powered Smart Search**: Intelligent keyword extraction using cursor-agent
+  - Automatically analyzes user queries and extracts optimal search keywords
+  - Prioritizes keywords by relevance and discriminative power
+  - Supports fallback mode when AI is not available
+- 📅 **Enhanced DateTime Display**: Comprehensive date/time information
+  - Added Date/Time column to search results table
+  - Full datetime display in PR and commit details
+  - Consistent MM-DD HH:MM format for quick reference
+- ⚙️ **Environment Variable Configuration**: Simplified setup
+  - Removed dependency on .env files
+  - Direct environment variable configuration
+  - No configuration files needed
+
+### Changed
+- 🔧 **Search Algorithm**: Enhanced with AI-powered keyword extraction
+  - `--smart-search` / `--no-smart-search` options added
+  - Smart search enabled by default
+  - Multi-keyword weighted scoring system
+- 📊 **Display Format**: Improved information presentation
+  - Search results now show creation/commit dates
+  - PR details include authored, committed, and merged dates
+  - Commit details show both authored and committed timestamps
+- 🏗️ **Configuration System**: Streamlined setup process
+  - Removed python-dotenv dependency
+  - Direct os.getenv() usage for environment variables
+
+### Removed
+- 📄 **Configuration Files**: No longer needed
+  - Removed .env.example file
+  - Removed python-dotenv dependency
+  - Simplified installation process
+
+### Technical Improvements
+- 🧠 **Smart Search Analyzer**: New module for AI-powered search
+- 🛠️ **Utility Functions**: Enhanced datetime formatting utilities
+- 🎨 **UI Enhancements**: Better table layout with datetime information
+
 ## [1.0.0] - 2025-01-21
 
 ### Added

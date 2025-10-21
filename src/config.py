@@ -28,7 +28,6 @@ SOFTWARE.
 import os
 from pathlib import Path
 from typing import Optional
-from dotenv import load_dotenv
 
 
 class Config:
@@ -36,8 +35,7 @@ class Config:
 
     def __init__(self):
         """initialize configuration with environment variables."""
-        load_dotenv()
-
+        # directly use environment variables without .env file
         self.cursor_agent_path: Optional[str] = os.getenv("CURSOR_AGENT_PATH")
         self.default_months: int = int(os.getenv("DEFAULT_MONTHS", "3"))
         self.default_repo_path: str = os.getenv("DEFAULT_REPO_PATH", ".")

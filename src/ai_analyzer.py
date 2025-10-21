@@ -66,7 +66,7 @@ class AIAnalyzer:
                 "[yellow]AI analysis not available: cursor-agent path not configured[/yellow]"
             )
             console.print(
-                "[yellow]Set CURSOR_AGENT_PATH in .env file to enable AI features[/yellow]"
+                "[yellow]Set CURSOR_AGENT_PATH environment variable to enable AI features[/yellow]"
             )
             return False
 

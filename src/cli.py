@@ -35,7 +35,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 
 from .config import config
-from .utils import check_gh_cli, check_git
+from .utils import check_gh_cli, check_git, format_datetime
 from .pr_collector import PRCollector
 from .commit_collector import CommitCollector
 from .diff_viewer import DiffViewer
@@ -117,6 +117,7 @@ def display_results_table(results: list[MatchResult]):
     table.add_column("#", style="dim", width=4)
     table.add_column("Type", width=8)
     table.add_column("ID", width=10)
+    table.add_column("Date/Time", width=16)
     table.add_column("Title/Message", style="green", no_wrap=False)
     table.add_column("Author", width=15)
     table.add_column("Score", justify="right", width=8)
@@ -127,11 +128,15 @@ def display_results_table(results: list[MatchResult]):
             item_id = f"#{item.number}"
             title = item.title[:80]
             author = item.author
+            # format PR date - use created_at
+            date_time = format_datetime(getattr(item, "created_at", None))
         else:
             item = result.item
             item_id = item.short_sha
             title = item.message.split("\n")[0][:80]
             author = item.author
+            # format commit date
+            date_time = format_datetime(getattr(item, "committed_date", None))
 
         score_style = (
             "green" if result.score >= 70 else "yellow" if result.score >= 50 else "red"
@@ -141,6 +146,7 @@ def display_results_table(results: list[MatchResult]):
             str(idx),
             result.item_type,
             item_id,
+            date_time,
             title,
             author,
             f"[{score_style}]{result.score}[/{score_style}]",
@@ -206,6 +212,11 @@ def collect(repo: Optional[str], months: int):
 @click.option("--max-results", type=int, default=20, help="Maximum number of results")
 @click.option("--analyze", "-a", is_flag=True, help="Analyze results with AI")
 @click.option("--show-diff", "-d", is_flag=True, help="Show diff for each result")
+@click.option(
+    "--smart-search/--no-smart-search",
+    default=True,
+    help="Use AI-powered smart search (default: enabled)",
+)
 def search(
     query: str,
     repo: Optional[str],
@@ -214,6 +225,7 @@ def search(
     max_results: int,
     analyze: bool,
     show_diff: bool,
+    smart_search: bool,
 ):
     """Search for PRs and commits matching a query."""
     print_banner()
@@ -233,7 +245,7 @@ def search(
 
         console.print()
 
-        matcher = Matcher()
+        matcher = Matcher(use_smart_search=smart_search)
         results = matcher.search(
             all_pr_list, commits, query, min_score=min_score, max_results=max_results
         )
@@ -260,7 +272,7 @@ def search(
                 ai_analyzer = AIAnalyzer()
                 if not ai_analyzer.is_available:
                     console.print(
-                        "\n[yellow]AI analysis not available. Please configure cursor-agent in .env[/yellow]"
+                        "\n[yellow]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/yellow]"
                     )
                     return
 
@@ -314,8 +326,9 @@ def view_pr(pr_number: int, repo: Optional[str], analyze: bool):
 
 [bold]Author:[/bold] {pr.author}
 [bold]State:[/bold] {pr.state}
-[bold]Created:[/bold] {pr.created_at}
-[bold]Updated:[/bold] {pr.updated_at}
+[bold]Created:[/bold] {format_datetime(pr.created_at, "full")}
+[bold]Updated:[/bold] {format_datetime(pr.updated_at, "full")}
+{f'[bold]Merged:[/bold] {format_datetime(pr.merged_at, "full")}' if pr.merged_at else ''}
 [bold]URL:[/bold] {pr.url}
 
 [bold]Statistics:[/bold]
@@ -373,9 +386,11 @@ def view_commit(commit_sha: str, analyze: bool):
 [bold cyan]Commit {commit.short_sha}[/bold cyan]
 
 [bold]Author:[/bold] {commit.author} <{commit.author_email}>
-[bold]Date:[/bold] {commit.committed_date}
+[bold]Authored:[/bold] {format_datetime(commit.authored_date, "full")}
+[bold]Committed:[/bold] {format_datetime(commit.committed_date, "full")}
 [bold]Is Merge:[/bold] {commit.is_merge}
 {f'[bold]PR Number:[/bold] #{commit.pr_number}' if commit.pr_number else ''}
+[bold]Full SHA:[/bold] {commit.sha}
 
 [bold]Statistics:[/bold]
   • Files Changed: {commit.files_changed}
@@ -435,7 +450,9 @@ def interactive():
         commits = commit_collector.collect_all_commits(months=months)
 
         diff_viewer = DiffViewer(repo_name=pr_collector.repo)
-        matcher = Matcher()
+        matcher = Matcher(
+            use_smart_search=True
+        )  # enable smart search by default in interactive mode
         ai_analyzer = AIAnalyzer()
 
         console.print(f"\n[bold cyan]Data collected:[/bold cyan]")

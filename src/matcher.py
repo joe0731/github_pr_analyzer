@@ -32,6 +32,7 @@ from rich.console import Console
 
 from .pr_collector import PullRequest
 from .commit_collector import Commit
+from .smart_search_analyzer import SmartSearchAnalyzer
 
 console = Console()
 
@@ -63,14 +64,17 @@ class MatchResult:
 class Matcher:
     """matcher for finding relevant PRs and commits based on queries."""
 
-    def __init__(self, fuzzy_threshold: int = 60):
+    def __init__(self, fuzzy_threshold: int = 60, use_smart_search: bool = True):
         """
         initialize matcher.
 
         Args:
             fuzzy_threshold: minimum fuzzy match score (0-100)
+            use_smart_search: whether to use AI-powered smart search
         """
         self.fuzzy_threshold = fuzzy_threshold
+        self.use_smart_search = use_smart_search
+        self.smart_analyzer = SmartSearchAnalyzer() if use_smart_search else None
 
     def _normalize_text(self, text: str) -> str:
         """
@@ -209,6 +213,125 @@ class Matcher:
 
         return MatchResult(commit, normalized_score, matched_fields)
 
+    def smart_search(
+        self,
+        prs: List[PullRequest],
+        commits: List[Commit],
+        query: str,
+        min_score: int = 30,
+        max_results: int = 20,
+    ) -> List[MatchResult]:
+        """
+        smart search using AI-extracted keywords.
+
+        Args:
+            prs: list of PRs to search
+            commits: list of commits to search
+            query: search query
+            min_score: minimum score to include in results
+            max_results: maximum number of results to return
+
+        Returns:
+            list: sorted list of MatchResults
+        """
+        if (
+            not self.use_smart_search
+            or not self.smart_analyzer
+            or not self.smart_analyzer.is_available
+        ):
+            console.print(
+                "[yellow]Smart search not available, using standard search[/yellow]"
+            )
+            return self.search(prs, commits, query, min_score, max_results)
+
+        console.print(f"[cyan]Smart searching for: '{query}'...[/cyan]")
+
+        # extract keywords using AI
+        keywords = self.smart_analyzer.extract_search_keywords(query)
+
+        if not keywords:
+            console.print(
+                "[yellow]No keywords extracted, using original query[/yellow]"
+            )
+            return self.search(prs, commits, query, min_score, max_results)
+
+        console.print(
+            f"[cyan]Using keywords: {', '.join(keywords[:5])}{'...' if len(keywords) > 5 else ''}[/cyan]"
+        )
+
+        # search with each keyword and combine results
+        all_results = {}  # item_id -> MatchResult
+
+        for i, keyword in enumerate(keywords):
+            # weight keywords by position (first keywords are more important)
+            keyword_weight = 1.0 - (i * 0.1)  # decrease weight by 10% for each position
+            keyword_weight = max(keyword_weight, 0.3)  # minimum weight of 30%
+
+            # search PRs
+            for pr in prs:
+                item_id = f"pr_{pr.number}"
+                match = self.match_pr(pr, keyword)
+
+                if match.score >= min_score:
+                    weighted_score = int(match.score * keyword_weight)
+
+                    if item_id in all_results:
+                        # combine scores (take maximum but add bonus for multiple matches)
+                        existing_score = all_results[item_id].score
+                        combined_score = max(existing_score, weighted_score) + min(
+                            10, weighted_score // 10
+                        )
+                        all_results[item_id].score = min(100, combined_score)
+                        all_results[item_id].matched_fields.extend(match.matched_fields)
+                    else:
+                        match.score = weighted_score
+                        all_results[item_id] = match
+
+            # search commits
+            for commit in commits:
+                item_id = f"commit_{commit.sha}"
+                match = self.match_commit(commit, keyword)
+
+                if match.score >= min_score:
+                    weighted_score = int(match.score * keyword_weight)
+
+                    if item_id in all_results:
+                        # combine scores
+                        existing_score = all_results[item_id].score
+                        combined_score = max(existing_score, weighted_score) + min(
+                            10, weighted_score // 10
+                        )
+                        all_results[item_id].score = min(100, combined_score)
+                        all_results[item_id].matched_fields.extend(match.matched_fields)
+                    else:
+                        match.score = weighted_score
+                        all_results[item_id] = match
+
+        # convert to list and sort
+        results = list(all_results.values())
+        results.sort(key=lambda x: x.score, reverse=True)
+
+        if len(results) > max_results:
+            results = results[:max_results]
+
+        # analyze search effectiveness
+        total_items = len(prs) + len(commits)
+        if self.smart_analyzer:
+            effectiveness = self.smart_analyzer.analyze_search_effectiveness(
+                keywords, total_items, len(results)
+            )
+
+            if effectiveness["suggestions"]:
+                console.print(
+                    f"[dim]💡 Suggestions: {effectiveness['suggestions'][0]}[/dim]"
+                )
+
+        console.print(
+            f"[green]✓ Found {len(results)} matches using smart search[/green]"
+        )
+
+        return results
+
     def search(
         self,
         prs: List[PullRequest],
@@ -230,6 +353,14 @@ class Matcher:
         Returns:
             list: sorted list of MatchResults
         """
+        # use smart search if available, otherwise fall back to standard search
+        if (
+            self.use_smart_search
+            and self.smart_analyzer
+            and self.smart_analyzer.is_available
+        ):
+            return self.smart_search(prs, commits, query, min_score, max_results)
+
         console.print(f"[cyan]Searching for: '{query}'...[/cyan]")
 
         results = []

@@ -6,12 +6,14 @@ A powerful command-line tool for intelligently collecting, analyzing, and summar
 
 ## ✨ Key Features
 
-- 🔍 **Smart Search**: Intelligent PR/Commit search based on fuzzy matching and keywords
+- 🔍 **Smart Search**: AI-powered keyword extraction and intelligent PR/Commit search
 - 📊 **Data Collection**: Automatically collect open and merged PRs, as well as merge commits
 - 🔄 **Diff Viewing**: Complete code change viewing functionality
 - 🤖 **AI Analysis**: Integrated with cursor-agent CLI for intelligent change summarization
+- 📅 **DateTime Display**: Comprehensive date/time information for all PRs and commits
 - 💼 **Production Quality**: Complete error handling, logging, and user experience
 - 🎨 **Beautiful Output**: Professional terminal output using Rich library
+- ⚙️ **Environment Variables**: Direct environment variable configuration (no config files needed)
 
 ## 📋 Prerequisites
 
@@ -85,23 +87,18 @@ pip install -r requirements.txt
 
 ## ⚙️ Configuration
 
-1. Copy the configuration template:
-```bash
-cp .env.example .env
-```
+Configure the tool using environment variables:
 
-2. Edit the `.env` file:
 ```bash
-# GitHub Configuration
-# gh CLI must be installed and authenticated
-
 # AI Configuration (Optional)
-CURSOR_AGENT_PATH=/path/to/cursor-agent
+export CURSOR_AGENT_PATH=/path/to/cursor-agent
 
-# Default Settings
-DEFAULT_MONTHS=3
-DEFAULT_REPO_PATH=.
+# Default Settings (Optional)
+export DEFAULT_MONTHS=3
+export DEFAULT_REPO_PATH=.
 ```
+
+No configuration files needed - just set environment variables directly!
 
 ## 📖 Usage
 
@@ -132,13 +129,17 @@ python main.py search "add new feature" --analyze
 # Show diff
 python main.py search "optimization" --show-diff
 
-# Advanced options
+# Advanced options with smart search
 python main.py search "refactor" \
   --repo owner/repo \
   --months 6 \
   --min-score 50 \
   --max-results 10 \
-  --analyze
+  --analyze \
+  --smart-search
+
+# Disable smart search (use traditional search)
+python main.py search "refactor" --no-smart-search
 ```
 
 #### 3. View Specific PR

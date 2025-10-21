@@ -172,3 +172,42 @@ def validate_repo_format(repo: str) -> bool:
     if not parts[0] or not parts[1]:
         return False
     return True
+
+
+def format_datetime(dt, format_type: str = "short") -> str:
+    """
+    format datetime for display.
+
+    Args:
+        dt: datetime object or ISO string
+        format_type: "short" for MM-DD HH:MM, "full" for full datetime
+
+    Returns:
+        str: formatted datetime string
+    """
+    from datetime import datetime
+
+    if not dt:
+        return "Unknown"
+
+    try:
+        # handle different input types
+        if isinstance(dt, str):
+            # handle ISO format with Z timezone
+            if dt.endswith("Z"):
+                dt = dt.replace("Z", "+00:00")
+            parsed_dt = datetime.fromisoformat(dt)
+        elif hasattr(dt, "strftime"):
+            parsed_dt = dt
+        else:
+            return "Unknown"
+
+        if format_type == "short":
+            return parsed_dt.strftime("%m-%d %H:%M")
+        elif format_type == "full":
+            return parsed_dt.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            return parsed_dt.strftime("%m-%d %H:%M")
+
+    except Exception:
+        return "Unknown"

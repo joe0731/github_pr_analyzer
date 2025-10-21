@@ -94,6 +94,7 @@ python main.py search "authentication" \
 - `--max-results`: 最大结果数量，默认 20
 - `--analyze, -a`: 启用 AI 分析
 - `--show-diff, -d`: 显示代码变更
+- `--smart-search / --no-smart-search`: 使用 AI 智能搜索（默认：启用）
 
 **输出示例：**
 ```

@@ -4,12 +4,14 @@
 
 ## ✨ 主要特性
 
-- 🔍 **智能搜索**：基于模糊匹配和关键词的智能 PR/Commit 搜索
+- 🔍 **智能搜索**：AI 驱动的关键词提取和智能 PR/Commit 搜索
 - 📊 **数据收集**：自动收集开放和已合并的 PR，以及 merge commits
 - 🔄 **Diff 查看**：完整的代码变更查看功能
 - 🤖 **AI 分析**：集成 cursor-agent CLI，智能总结变更内容
+- 📅 **日期时间显示**：全面的 PR 和 commit 日期时间信息
 - 💼 **商用级品质**：完整的错误处理、日志记录和用户体验
 - 🎨 **美观输出**：使用 Rich 库提供漂亮的终端输出
+- ⚙️ **环境变量配置**：直接使用环境变量配置（无需配置文件）
 
 ## 📋 前置要求
 
@@ -83,23 +85,18 @@ pip install -r requirements.txt
 
 ## ⚙️ 配置
 
-1. 复制配置文件模板：
+使用环境变量配置工具：
+
 ```bash
-cp .env.example .env
+# AI 配置（可选）
+export CURSOR_AGENT_PATH=/path/to/cursor-agent
+
+# 默认设置（可选）
+export DEFAULT_MONTHS=3
+export DEFAULT_REPO_PATH=.
 ```
 
-2. 编辑 `.env` 文件：
-```bash
-# GitHub Configuration
-# gh CLI must be installed and authenticated
-
-# AI Configuration (Optional)
-CURSOR_AGENT_PATH=/path/to/cursor-agent
-
-# Default Settings
-DEFAULT_MONTHS=3
-DEFAULT_REPO_PATH=.
-```
+无需配置文件 - 直接设置环境变量即可！
 
 ## 📖 使用方法
 

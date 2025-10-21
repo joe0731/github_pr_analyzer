@@ -96,6 +96,7 @@ python main.py search "authentication" \
 - `--max-results`: Maximum number of results, default 20
 - `--analyze, -a`: Enable AI analysis
 - `--show-diff, -d`: Show code changes
+- `--smart-search / --no-smart-search`: Use AI-powered smart search (default: enabled)
 
 ### view-pr - View PR Details
 
@@ -187,14 +188,63 @@ python main.py view-pr 456 --analyze
 # - Potential impact and risk assessment
 ```
 
+## Smart Search Features
+
+### AI-Powered Keyword Extraction
+
+The tool now includes intelligent keyword extraction that analyzes your search queries and automatically extracts the most effective search terms.
+
+#### How Smart Search Works
+
+1. **Query Analysis**: Your search query is analyzed by cursor-agent AI
+2. **Keyword Extraction**: 5-10 high-quality keywords are extracted and prioritized
+3. **Multi-Keyword Search**: Each keyword is searched separately with weighted scoring
+4. **Result Combination**: Results are combined and ranked by relevance
+
+#### Smart Search Examples
+
+```bash
+# Smart search automatically extracts keywords
+python main.py search "fix authentication bug in user login"
+# AI extracts: ["authentication", "login", "fix", "bug", "user", "auth", "security"]
+
+# Traditional search (exact phrase matching)
+python main.py search "fix authentication bug in user login" --no-smart-search
+```
+
+#### Search Result Display
+
+Search results now include a **Date/Time** column showing when PRs were created or commits were made:
+
+```
+Search Results (3 matches)
+┏━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┓
+┃ #  ┃ Type   ┃ ID         ┃ Date/Time      ┃ Title/Message        ┃ Author        ┃  Score ┃
+┡━━━━╇━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━┩
+│ 1  │ PR     │ #123       │ 01-15 14:30    │ Fix authentication   │ john-doe      │     85 │
+│ 2  │ Commit │ abc1234    │ 01-14 09:15    │ Update auth service  │ jane-smith    │     72 │
+└────┴────────┴────────────┴────────────────┴──────────────────────┴───────────────┴────────┘
+```
+
+### Configuration
+
+Smart search requires cursor-agent for optimal performance:
+
+```bash
+# Enable AI-powered smart search
+export CURSOR_AGENT_PATH=/path/to/cursor-agent
+
+# Smart search will automatically fall back to rule-based extraction if AI is unavailable
+```
+
 ## AI Analysis Features
 
 ### Configure cursor-agent
 
 1. Ensure cursor-agent CLI is installed
-2. Set path in `.env` file:
-   ```
-   CURSOR_AGENT_PATH=/usr/local/bin/cursor-agent
+2. Set environment variable:
+   ```bash
+   export CURSOR_AGENT_PATH=/usr/local/bin/cursor-agent
    ```
 
 ### Analysis Types
