@@ -47,6 +47,7 @@ gh-pr-analyzer collect
 
 # 4. Generate Daily/Weekly Report
 gh-pr-analyzer traverse --days 7
+gh-pr-analyzer traverse -r pytorch/pytorch --days 7
 ```
 
 ## ✨ Features

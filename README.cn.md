@@ -47,6 +47,8 @@ gh-pr-analyzer collect
 
 # 4. 生成日报/周报
 gh-pr-analyzer traverse --days 7
+gh-pr-analyzer traverse -r pytorch/pytorch --days 7
+
 ```
 
 ## ✨ 主要特性
