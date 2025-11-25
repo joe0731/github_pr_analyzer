@@ -25,26 +25,33 @@ gh-pr-analyzer search "query" --analyze
 --analyze, -a   启用 AI 分析
 --show-diff, -d 显示代码变更
 --smart-search  启用/禁用 AI 关键词提取
+--save-json     将匹配到的 PR 导出为 JSON
+--output-dir    JSON 文件输出目录 (默认: pr_exports)
 ```
 
 ### `collect` (收集)
 收集统计信息 (开放/已合并 PR, commits)。
 ```bash
-gh-pr-analyzer collect --months 6
+gh-pr-analyzer collect --months 6 --save-json --output-dir ./exports
 ```
 
 ### `traverse` (遍历)
 批量分析近期 PR，适用于生成报告。
 ```bash
-gh-pr-analyzer traverse --days 7
+gh-pr-analyzer traverse --days 7 --save-json
 ```
 
 ### `view-pr` / `view-commit` (查看详情)
 查看特定项目的详细信息。
 ```bash
-gh-pr-analyzer view-pr 123 --analyze
+gh-pr-analyzer view-pr 123 --analyze --output-dir ./exports   # 默认开启 JSON 导出
 gh-pr-analyzer view-commit <SHA>
 ```
+
+### JSON 导出提示
+- `view-pr` 默认写入 JSON，可通过 `--no-save-json` 关闭。
+- `collect`、`search`、`traverse` 在传入 `--save-json` 时会导出所涉及的 PR。
+- 文件默认位于 `pr_exports/`，命名为 `repo_name_<pr>_<title>.json`，内容包括 PR 元信息、所有 commit（ID、标题、message、逐文件 diff）以及完整会话。结构说明见 [README.cn.md](README.cn.md#-json-导出格式)。
 
 ## 配置说明
 

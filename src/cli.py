@@ -41,6 +41,7 @@ from .commit_collector import CommitCollector
 from .diff_viewer import DiffViewer
 from .matcher import Matcher, MatchResult
 from .ai_analyzer import AIAnalyzer
+from .pr_exporter import PRJSONExporter
 
 console = Console()
 
@@ -155,6 +156,45 @@ def display_results_table(results: list[MatchResult]):
     console.print(table)
 
 
+def export_pr_datasets(
+    repo_name: str, pr_pairs: List[Tuple[int, Optional[str]]], output_dir: Path
+):
+    """export PR data into JSON files."""
+    if not pr_pairs:
+        console.print("[yellow]No PR numbers provided for export[/yellow]")
+        return
+
+    filtered_pairs: List[Tuple[int, Optional[str]]] = []
+    seen: set[int] = set()
+    for number, title in pr_pairs:
+        if number in seen:
+            continue
+        seen.add(number)
+        filtered_pairs.append((number, title))
+
+    try:
+        exporter = PRJSONExporter(repo_name=repo_name, output_dir=output_dir)
+    except Exception as exc:
+        console.print(f"[red]Failed to initialize exporter: {str(exc)}[/red]")
+        return
+
+    exported_count = 0
+    for number, title in filtered_pairs:
+        try:
+            exporter.export_pr(number, title_hint=title)
+            exported_count += 1
+        except Exception as exc:
+            console.print(f"[red]Failed to export PR #{number}: {str(exc)}[/red]")
+
+    if exported_count == 0:
+        console.print("[yellow]No PR JSON files were created[/yellow]")
+        return
+
+    console.print(
+        f"[green]✓ Exported {exported_count} PR file(s) to {str(output_dir)}[/green]"
+    )
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def cli():
     """GitHub PR and Commit Analyzer - Find and analyze relevant changes."""
@@ -174,7 +214,19 @@ def cli():
     default=3,
     help="Number of months to look back for merged items",
 )
-def collect(repo: Optional[str], months: int):
+@click.option(
+    "--save-json/--no-save-json",
+    default=False,
+    help="Export collected PRs into JSON files",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("pr_exports"),
+    show_default=True,
+    help="Directory for exported PR JSON files",
+)
+def collect(repo: Optional[str], months: int, save_json: bool, output_dir: Path):
     """Collect all PRs and commits from the repository."""
     print_banner()
 
@@ -199,6 +251,14 @@ def collect(repo: Optional[str], months: int):
         console.print(f"  • Merge Commits (last {months} months): {len(merge_commits)}")
         console.print()
 
+        if save_json:
+            pr_pairs: List[Tuple[int, Optional[str]]] = []
+            for pr in all_prs.get("open", []):
+                pr_pairs.append((pr.number, pr.title))
+            for pr in all_prs.get("merged", []):
+                pr_pairs.append((pr.number, pr.title))
+            export_pr_datasets(pr_collector.repo, pr_pairs, output_dir)
+
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)
@@ -217,6 +277,18 @@ def collect(repo: Optional[str], months: int):
     default=True,
     help="Use AI-powered smart search (default: enabled)",
 )
+@click.option(
+    "--save-json/--no-save-json",
+    default=False,
+    help="Export matched PRs into JSON files",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("pr_exports"),
+    show_default=True,
+    help="Directory for exported PR JSON files",
+)
 def search(
     query: str,
     repo: Optional[str],
@@ -226,6 +298,8 @@ def search(
     analyze: bool,
     show_diff: bool,
     smart_search: bool,
+    save_json: bool,
+    output_dir: Path,
 ):
     """Search for PRs and commits matching a query."""
     print_banner()
@@ -296,6 +370,20 @@ def search(
                     Path(report_file).write_text(report)
                     console.print(f"[green]✓ Report saved to: {report_file}[/green]")
 
+        if save_json:
+            pr_pairs: List[Tuple[int, Optional[str]]] = []
+            for result in results:
+                if result.item_type == "PR":
+                    pr_pairs.append((result.item.number, result.item.title))
+                else:
+                    pr_number = getattr(result.item, "pr_number", None)
+                    if pr_number:
+                        pr_pairs.append((pr_number, None))
+            if pr_pairs:
+                export_pr_datasets(pr_collector.repo, pr_pairs, output_dir)
+            else:
+                console.print("[yellow]No PR entries available for export[/yellow]")
+
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
         sys.exit(1)
@@ -305,7 +393,25 @@ def search(
 @click.argument("pr_number", type=int)
 @click.option("--repo", "-r", help="Repository in format owner/repo")
 @click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
-def view_pr(pr_number: int, repo: Optional[str], analyze: bool):
+@click.option(
+    "--save-json/--no-save-json",
+    default=True,
+    help="Export this PR into a JSON file (default: enabled)",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("pr_exports"),
+    show_default=True,
+    help="Directory for exported PR JSON files",
+)
+def view_pr(
+    pr_number: int,
+    repo: Optional[str],
+    analyze: bool,
+    save_json: bool,
+    output_dir: Path,
+):
     """View details of a specific PR."""
     print_banner()
 
@@ -358,6 +464,13 @@ def view_pr(pr_number: int, repo: Optional[str], analyze: bool):
                 )
                 if analysis:
                     ai_analyzer.display_analysis(pr, analysis)
+
+        if save_json:
+            export_pr_datasets(
+                pr_collector.repo,
+                [(pr.number, pr.title)],
+                output_dir,
+            )
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
@@ -550,7 +663,19 @@ def interactive():
     default=60,
     help="Number of days to look back for PR traversal",
 )
-def traverse(repo: Optional[str], days: int):
+@click.option(
+    "--save-json/--no-save-json",
+    default=False,
+    help="Export traversed PRs into JSON files",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("pr_exports"),
+    show_default=True,
+    help="Directory for exported PR JSON files",
+)
+def traverse(repo: Optional[str], days: int, save_json: bool, output_dir: Path):
     """Traverse recent PRs and analyze them with AI."""
     print_banner()
 
@@ -624,6 +749,14 @@ def traverse(repo: Optional[str], days: int):
                 )
                 Path(report_file).write_text(report)
                 console.print(f"[green]✓ Report saved to: {report_file}[/green]")
+
+        if save_json:
+            pr_pairs: List[Tuple[int, Optional[str]]] = []
+            for pr in merged_prs:
+                pr_pairs.append((pr.number, pr.title))
+            for pr in open_prs:
+                pr_pairs.append((pr.number, pr.title))
+            export_pr_datasets(pr_collector.repo, pr_pairs, output_dir)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")

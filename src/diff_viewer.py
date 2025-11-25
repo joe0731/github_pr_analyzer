@@ -182,6 +182,43 @@ class DiffViewer:
             console.print(f"[red]Error getting commit files: {str(e)}[/red]")
             return []
 
+    def get_commit_file_diffs(self, sha: str) -> List[Dict[str, str]]:
+        """
+        get per-file diffs for a commit.
+
+        Args:
+            sha: commit SHA
+
+        Returns:
+            list: list of dictionaries with file path and diff text
+        """
+        entries: List[Dict[str, str]] = []
+        try:
+            commit = self.repo.commit(sha)
+
+            if len(commit.parents) == 0:
+                diff_index = commit.diff(None, create_patch=True)
+            else:
+                parent = commit.parents[0]
+                diff_index = parent.diff(commit, create_patch=True)
+
+            for diff_item in diff_index:
+                path = diff_item.b_path
+                if not path:
+                    path = diff_item.a_path or ""
+
+                diff_text = ""
+                if diff_item.diff:
+                    diff_text = diff_item.diff.decode("utf-8", errors="replace")
+
+                entries.append({"path": path, "diff": diff_text})
+
+            return entries
+
+        except Exception as e:
+            console.print(f"[red]Error getting commit file diffs: {str(e)}[/red]")
+            return []
+
     def display_commit_diff(self, sha: str, max_lines: int = 500):
         """
         display commit diff in a formatted way.

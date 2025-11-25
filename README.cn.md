@@ -43,11 +43,11 @@ gh-pr-analyzer interactive
 gh-pr-analyzer search "authentication bug" --analyze
 
 # 3. 收集数据
-gh-pr-analyzer collect
+gh-pr-analyzer collect --save-json
 
-# 4. 生成日报/周报
-gh-pr-analyzer traverse --days 7
-gh-pr-analyzer traverse -r pytorch/pytorch --days 7
+# 4. 生成日报/周报并导出
+gh-pr-analyzer traverse --days 7 --save-json
+gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
 
 ```
 
@@ -57,5 +57,49 @@ gh-pr-analyzer traverse -r pytorch/pytorch --days 7
 - 🔄 **Diff 查看**: 语法高亮的代码变更展示
 - 🤖 **AI 分析**: 集成 cursor-agent 自动总结
 - 📅 **遍历模式**: 批量分析用于生成报告
+- 🗂 **JSON 导出**: 将 PR、commit 与完整对话保存为结构化 JSON
 
 详细命令用法请参阅 [USAGE.cn.md](USAGE.cn.md)。
+
+## 🗂 JSON 导出格式
+
+`collect`、`search`、`traverse`、`view-pr` 均支持通过 `--save-json` 输出结构化数据（`view-pr` 默认开启）。文件默认写入 `pr_exports/`，也可通过 `--output-dir` 自定义目录，命名规则为 `repo_name_<pr_num>_<pr_title>.json`。
+
+每个 JSON 文件包含：
+
+- `repo`: 形如 `owner/repo` 的仓库标识
+- `pr`: PR 基本信息（编号、标题、作者、状态、描述、base/head 分支、时间戳、URL）
+- `commits`: PR 关联提交列表，包含
+  - `id`: 完整 commit SHA
+  - `title`: commit 第一行标题
+  - `message`: 完整 commit message
+  - `files`: `{ "path": "<文件路径>", "diff": "<统一 diff 内容>" }` 数组
+- `conversation`: 审查会话数据
+  - `issue_comments`: PR 页面上的讨论
+  - `review_threads`: 代码审查线程，含每条评论、状态、是否已解决
+  - `reviews`: 审查结论（approve / comment / request changes）
+
+> 示例片段：
+```json
+{
+  "repo": "octo-org/octo-repo",
+  "pr": { "number": 42, "title": "Fix login" },
+  "commits": [
+    {
+      "id": "abc123...",
+      "title": "Adjust auth flow",
+      "message": "Adjust auth flow\n\n- add checks...\n",
+      "files": [
+        { "path": "auth/login.py", "diff": "@@ -1,3 +1,4 @@" }
+      ]
+    }
+  ],
+  "conversation": {
+    "issue_comments": [],
+    "review_threads": [],
+    "reviews": []
+  }
+}
+```
+
+借助该格式可轻松串接自定义分析、审计或归档流程。

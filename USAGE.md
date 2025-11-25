@@ -25,26 +25,33 @@ gh-pr-analyzer search "query" --analyze
 --analyze, -a   Enable AI analysis
 --show-diff, -d Show code changes
 --smart-search  Enable/disable AI keyword extraction
+--save-json     Save matched PRs as JSON datasets
+--output-dir    Directory for JSON files (default: pr_exports)
 ```
 
 ### `collect`
 Collect statistics (open/merged PRs, commits).
 ```bash
-gh-pr-analyzer collect --months 6
+gh-pr-analyzer collect --months 6 --save-json --output-dir ./exports
 ```
 
 ### `traverse`
 Batch analyze recent PRs for reports.
 ```bash
-gh-pr-analyzer traverse --days 7
+gh-pr-analyzer traverse --days 7 --save-json
 ```
 
 ### `view-pr` / `view-commit`
 View details of a specific item.
 ```bash
-gh-pr-analyzer view-pr 123 --analyze
+gh-pr-analyzer view-pr 123 --analyze --output-dir ./exports   # JSON export enabled by default
 gh-pr-analyzer view-commit <SHA>
 ```
+
+### JSON Export Notes
+- `view-pr` writes a JSON file automatically unless `--no-save-json` is supplied.
+- `collect`, `search`, and `traverse` export the PRs they touch when `--save-json` is present.
+- Files are saved under `pr_exports/` by default with the suffix `repo_name_<pr>_<title>.json` and contain PR metadata, every commit (ID, title, message, per-file diff), plus the full review conversation. See [README](README.md#-json-export-format) for a schema overview.
 
 ## Configuration
 

@@ -43,11 +43,11 @@ gh-pr-analyzer interactive
 gh-pr-analyzer search "authentication bug" --analyze
 
 # 3. Collect Data
-gh-pr-analyzer collect
+gh-pr-analyzer collect --save-json
 
-# 4. Generate Daily/Weekly Report
-gh-pr-analyzer traverse --days 7
-gh-pr-analyzer traverse -r pytorch/pytorch --days 7
+# 4. Generate Daily/Weekly Report + Export Datasets
+gh-pr-analyzer traverse --days 7 --save-json
+gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
 ```
 
 ## ✨ Features
@@ -56,5 +56,49 @@ gh-pr-analyzer traverse -r pytorch/pytorch --days 7
 - 🔄 **Diff Viewing**: Syntax-highlighted code changes
 - 🤖 **AI Analysis**: Summarization via cursor-agent
 - 📅 **Traverse Mode**: Batch analysis for reporting
+- 🗂 **JSON Export**: Persist PR, commit, and review conversations as structured JSON
 
 For detailed command usage, see [USAGE.md](USAGE.md).
+
+## 🗂 JSON Export Format
+
+All major workflows (`collect`, `search`, `traverse`, `view-pr`) can write structured datasets when `--save-json` is supplied (enabled by default for `view-pr`). Files land in `pr_exports/` unless `--output-dir` is specified and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
+
+Each JSON document contains:
+
+- `repo`: the `owner/repo` slug used for collection
+- `pr`: metadata (number, title, author, state, description, base/head refs, timestamps, URL)
+- `commits`: ordered list of commits belonging to the PR with
+  - `id`: full commit SHA
+  - `title`: first line of the commit message
+  - `message`: full commit body
+  - `files`: array of `{ "path": "<file>", "diff": "<unified diff>" }`
+- `conversation`: threaded review data
+  - `issue_comments`: top-level PR discussion
+  - `review_threads`: code review threads with inline comments and resolution state
+  - `reviews`: review summaries (approve/comment/request changes)
+
+> Example snippet:
+```json
+{
+  "repo": "octo-org/octo-repo",
+  "pr": { "number": 42, "title": "Fix login" },
+  "commits": [
+    {
+      "id": "abc123...",
+      "title": "Adjust auth flow",
+      "message": "Adjust auth flow\n\n- add checks...\n",
+      "files": [
+        { "path": "auth/login.py", "diff": "@@ -1,3 +1,4 @@" }
+      ]
+    }
+  ],
+  "conversation": {
+    "issue_comments": [],
+    "review_threads": [],
+    "reviews": []
+  }
+}
+```
+
+Use these exports to feed downstream tooling, audits, or offline review workflows.
