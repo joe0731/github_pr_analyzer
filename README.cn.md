@@ -51,6 +51,8 @@ gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
 
 ```
 
+所有命令都提供成对的 `--save-json` / `--no-save-json` 开关，需要导出时随时打开，不想生成则显式关闭（例如 `view-pr` 默认导出，配合 `--no-save-json` 可跳过写入）。
+
 ## ✨ 主要特性
 - 🔍 **智能搜索**: AI 驱动的关键词提取
 - 📊 **数据收集**: PR 和 merge commit 统计
@@ -63,7 +65,7 @@ gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
 
 ## 🗂 JSON 导出格式
 
-`collect`、`search`、`traverse`、`view-pr` 均支持通过 `--save-json` 输出结构化数据（`view-pr` 默认开启）。文件默认写入 `pr_exports/`，也可通过 `--output-dir` 自定义目录，命名规则为 `repo_name_<pr_num>_<pr_title>.json`。
+`collect`、`search`、`traverse`、`view-pr` 共享同一组 `--save-json` / `--no-save-json` 选项（其中 `view-pr` 默认开启，可用 `--no-save-json` 关闭）。文件默认写入 `pr_exports/`，也可通过 `--output-dir` 自定义目录，命名规则为 `repo_name_<pr_num>_<pr_title>.json`。
 
 每个 JSON 文件包含：
 

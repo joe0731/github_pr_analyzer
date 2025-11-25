@@ -50,6 +50,8 @@ gh-pr-analyzer traverse --days 7 --save-json
 gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
 ```
 
+All CLI workflows expose matching `--save-json` / `--no-save-json` toggles so you can enable exports when needed and opt out (for example, disable the default `view-pr` export with `--no-save-json`).
+
 ## ✨ Features
 - 🔍 **Smart Search**: AI-powered keyword extraction
 - 📊 **Data Collection**: PRs and merge commits statistics
@@ -62,7 +64,7 @@ For detailed command usage, see [USAGE.md](USAGE.md).
 
 ## 🗂 JSON Export Format
 
-All major workflows (`collect`, `search`, `traverse`, `view-pr`) can write structured datasets when `--save-json` is supplied (enabled by default for `view-pr`). Files land in `pr_exports/` unless `--output-dir` is specified and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
+All major workflows (`collect`, `search`, `traverse`, `view-pr`) share the same `--save-json` / `--no-save-json` flags (with `view-pr` defaulting to export unless `--no-save-json` is specified). Files land in `pr_exports/` unless `--output-dir` is provided and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
 
 Each JSON document contains:
 

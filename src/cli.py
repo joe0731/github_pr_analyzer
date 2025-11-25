@@ -195,6 +195,30 @@ def export_pr_datasets(
     )
 
 
+def resolve_json_export_flag(
+    enable_flag: bool, disable_flag: bool, default: bool, command_name: str
+) -> bool:
+    """
+    resolve the final json export behavior based on mutually exclusive flags.
+
+    Args:
+        enable_flag: whether --save-json was provided
+        disable_flag: whether --no-save-json was provided
+        default: default behavior when neither flag is set
+        command_name: current command, used for clearer error text
+    """
+    if enable_flag and disable_flag:
+        raise click.BadParameter(
+            f"--save-json and --no-save-json cannot be combined in {command_name}",
+            param_hint="--save-json/--no-save-json",
+        )
+    if enable_flag:
+        return True
+    if disable_flag:
+        return False
+    return default
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 def cli():
     """GitHub PR and Commit Analyzer - Find and analyze relevant changes."""
@@ -215,9 +239,18 @@ def cli():
     help="Number of months to look back for merged items",
 )
 @click.option(
-    "--save-json/--no-save-json",
+    "--save-json",
+    "save_json_flag",
+    is_flag=True,
     default=False,
     help="Export collected PRs into JSON files",
+)
+@click.option(
+    "--no-save-json",
+    "no_save_json_flag",
+    is_flag=True,
+    default=False,
+    help="Disable PR JSON export",
 )
 @click.option(
     "--output-dir",
@@ -226,12 +259,22 @@ def cli():
     show_default=True,
     help="Directory for exported PR JSON files",
 )
-def collect(repo: Optional[str], months: int, save_json: bool, output_dir: Path):
+def collect(
+    repo: Optional[str],
+    months: int,
+    save_json_flag: bool,
+    no_save_json_flag: bool,
+    output_dir: Path,
+):
     """Collect all PRs and commits from the repository."""
     print_banner()
 
     if not check_prerequisites():
         sys.exit(1)
+
+    save_json = resolve_json_export_flag(
+        save_json_flag, no_save_json_flag, default=False, command_name="collect"
+    )
 
     try:
         pr_collector = PRCollector(repo)
@@ -278,9 +321,18 @@ def collect(repo: Optional[str], months: int, save_json: bool, output_dir: Path)
     help="Use AI-powered smart search (default: enabled)",
 )
 @click.option(
-    "--save-json/--no-save-json",
+    "--save-json",
+    "save_json_flag",
+    is_flag=True,
     default=False,
     help="Export matched PRs into JSON files",
+)
+@click.option(
+    "--no-save-json",
+    "no_save_json_flag",
+    is_flag=True,
+    default=False,
+    help="Disable PR JSON export",
 )
 @click.option(
     "--output-dir",
@@ -298,7 +350,8 @@ def search(
     analyze: bool,
     show_diff: bool,
     smart_search: bool,
-    save_json: bool,
+    save_json_flag: bool,
+    no_save_json_flag: bool,
     output_dir: Path,
 ):
     """Search for PRs and commits matching a query."""
@@ -306,6 +359,10 @@ def search(
 
     if not check_prerequisites():
         sys.exit(1)
+
+    save_json = resolve_json_export_flag(
+        save_json_flag, no_save_json_flag, default=False, command_name="search"
+    )
 
     try:
         pr_collector = PRCollector(repo)
@@ -394,9 +451,18 @@ def search(
 @click.option("--repo", "-r", help="Repository in format owner/repo")
 @click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
 @click.option(
-    "--save-json/--no-save-json",
-    default=True,
+    "--save-json",
+    "save_json_flag",
+    is_flag=True,
+    default=False,
     help="Export this PR into a JSON file (default: enabled)",
+)
+@click.option(
+    "--no-save-json",
+    "no_save_json_flag",
+    is_flag=True,
+    default=False,
+    help="Skip exporting this PR to JSON",
 )
 @click.option(
     "--output-dir",
@@ -409,7 +475,8 @@ def view_pr(
     pr_number: int,
     repo: Optional[str],
     analyze: bool,
-    save_json: bool,
+    save_json_flag: bool,
+    no_save_json_flag: bool,
     output_dir: Path,
 ):
     """View details of a specific PR."""
@@ -417,6 +484,10 @@ def view_pr(
 
     if not check_prerequisites():
         sys.exit(1)
+
+    save_json = resolve_json_export_flag(
+        save_json_flag, no_save_json_flag, default=True, command_name="view-pr"
+    )
 
     try:
         pr_collector = PRCollector(repo)
@@ -664,9 +735,18 @@ def interactive():
     help="Number of days to look back for PR traversal",
 )
 @click.option(
-    "--save-json/--no-save-json",
+    "--save-json",
+    "save_json_flag",
+    is_flag=True,
     default=False,
     help="Export traversed PRs into JSON files",
+)
+@click.option(
+    "--no-save-json",
+    "no_save_json_flag",
+    is_flag=True,
+    default=False,
+    help="Disable PR JSON export",
 )
 @click.option(
     "--output-dir",
@@ -675,7 +755,13 @@ def interactive():
     show_default=True,
     help="Directory for exported PR JSON files",
 )
-def traverse(repo: Optional[str], days: int, save_json: bool, output_dir: Path):
+def traverse(
+    repo: Optional[str],
+    days: int,
+    save_json_flag: bool,
+    no_save_json_flag: bool,
+    output_dir: Path,
+):
     """Traverse recent PRs and analyze them with AI."""
     print_banner()
 
@@ -692,6 +778,10 @@ def traverse(repo: Optional[str], days: int, save_json: bool, output_dir: Path):
             "[red]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/red]"
         )
         sys.exit(1)
+
+    save_json = resolve_json_export_flag(
+        save_json_flag, no_save_json_flag, default=False, command_name="traverse"
+    )
 
     try:
         pr_collector = PRCollector(repo)
