@@ -33,7 +33,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="github-pr-analyzer",
-    version="3.0.5",
+    version="3.0.6",
     author="GitHub PR Analyzer Team",
     description="Intelligent tool for collecting, analyzing, and summarizing GitHub Pull Requests and commits",
     long_description=long_description,
