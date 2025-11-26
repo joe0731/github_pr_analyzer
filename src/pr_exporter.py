@@ -64,6 +64,11 @@ class PRJSONExporter:
         if not pr_title:
             pr_title = f"pr_{pr_number}"
 
+        # extract PR state and timestamp for filename
+        pr_state = payload.get("state", "UNKNOWN")
+        merged_at = payload.get("mergedAt")
+        updated_at = payload.get("updatedAt")
+
         export_payload = {
             "repo": self.repo_name,
             "pr": self._build_pr_section(payload, pr_number, pr_title),
@@ -71,7 +76,9 @@ class PRJSONExporter:
             "conversation": self._build_conversation(payload),
         }
 
-        file_path = self.output_dir / self._build_filename(pr_number, pr_title)
+        file_path = self.output_dir / self._build_filename(
+            pr_number, pr_title, pr_state, merged_at, updated_at
+        )
         file_path.write_text(json.dumps(export_payload, ensure_ascii=False, indent=2))
         console.print(
             f"[green]✓ Saved PR #{pr_number} data to {str(file_path)}[/green]"
@@ -418,14 +425,76 @@ class PRJSONExporter:
                 return self._format_body_text(str(value))
         return []
 
-    def _build_filename(self, pr_number: int, title: str) -> str:
+    def _build_filename(
+        self,
+        pr_number: int,
+        title: str,
+        state: str,
+        merged_at: Optional[str],
+        updated_at: Optional[str],
+    ) -> str:
+        """
+        build filename with PR state and timestamp.
+
+        Format: {repo}_{merged_pr|open_pr}_{pr_number}_{title}_{timestamp}.json
+
+        Args:
+            pr_number: PR number
+            title: PR title
+            state: PR state (MERGED, OPEN, CLOSED)
+            merged_at: merge timestamp (ISO format)
+            updated_at: update timestamp (ISO format)
+
+        Returns:
+            formatted filename string
+        """
         safe_repo = self.repo_name.replace("/", "_")
+
+        # determine PR status label
+        if state == "MERGED":
+            status_label = "merged_pr"
+        else:
+            status_label = "open_pr"
+
+        # clean title
         cleaned_title = title.strip()
         if not cleaned_title:
             cleaned_title = f"pr_{pr_number}"
         cleaned_title = re.sub(r"\s+", "_", cleaned_title)
         cleaned_title = re.sub(r"[^A-Za-z0-9_.-]", "_", cleaned_title)
-        return f"{safe_repo}_{pr_number}_{cleaned_title}.json"
+        # truncate title if too long
+        if len(cleaned_title) > 50:
+            cleaned_title = cleaned_title[:50]
+
+        # build timestamp from merged_at or updated_at
+        timestamp = self._format_timestamp(merged_at if merged_at else updated_at)
+
+        return f"{safe_repo}_{status_label}_{pr_number}_{cleaned_title}_{timestamp}.json"
+
+    def _format_timestamp(self, iso_timestamp: Optional[str]) -> str:
+        """
+        format ISO timestamp to YYYYMMDD_HHMM format.
+
+        Args:
+            iso_timestamp: timestamp in ISO format (e.g., 2025-11-30T09:23:45Z)
+
+        Returns:
+            formatted timestamp string (e.g., 20251130_0923)
+        """
+        if not iso_timestamp:
+            from datetime import datetime
+            now = datetime.now()
+            return now.strftime("%Y%m%d_%H%M")
+
+        try:
+            from datetime import datetime
+            # parse ISO format timestamp
+            dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+            return dt.strftime("%Y%m%d_%H%M")
+        except Exception:
+            from datetime import datetime
+            now = datetime.now()
+            return now.strftime("%Y%m%d_%H%M")
 
     def _pick_first_value(
         self, data: Dict[str, Any], keys: Sequence[str]
