@@ -53,11 +53,18 @@ class PullRequest:
         """
         self.number: int = data.get("number", 0)
         self.title: str = data.get("title", "")
-        self.author: str = (
-            data.get("author", {}).get("login", "unknown")
-            if isinstance(data.get("author"), dict)
-            else data.get("author", "unknown")
-        )
+
+        # extract author information
+        author_data = data.get("author", {})
+        if isinstance(author_data, dict):
+            self.author: str = author_data.get("login", "unknown")
+            self.author_name: Optional[str] = author_data.get("name")
+            self.author_email: Optional[str] = author_data.get("email")
+        else:
+            self.author = str(author_data) if author_data else "unknown"
+            self.author_name = None
+            self.author_email = None
+
         self.state: str = data.get("state", "")
         self.created_at: str = data.get("createdAt", "")
         self.updated_at: str = data.get("updatedAt", "")
@@ -84,6 +91,8 @@ class PullRequest:
             "number": self.number,
             "title": self.title,
             "author": self.author,
+            "author_name": self.author_name,
+            "author_email": self.author_email,
             "state": self.state,
             "created_at": self.created_at,
             "updated_at": self.updated_at,

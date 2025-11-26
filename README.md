@@ -64,7 +64,7 @@ For detailed command usage, see [USAGE.md](USAGE.md).
 
 ## 🗂 JSON Export Format
 
-All major workflows (`collect`, `search`, `traverse`, `view-pr`) share the same `--save-json` / `--no-save-json` flags (with `view-pr` defaulting to export unless `--no-save-json` is specified). Files land in `pr_exports/` unless `--output-dir` is provided and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
+All major workflows (`collect`, `search`, `traverse`, `view-pr`) share the same `--save-json` / `--no-save-json` flags (with `view-pr` defaulting to export unless `--no-save-json` is specified). Files land in `gh_pr_exports/` unless `--output-dir` is provided and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
 
 Each JSON document contains:
 

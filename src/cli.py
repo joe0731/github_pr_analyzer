@@ -255,7 +255,7 @@ def cli():
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=Path("pr_exports"),
+    default=Path("gh_pr_exports"),
     show_default=True,
     help="Directory for exported PR JSON files",
 )
@@ -337,9 +337,17 @@ def collect(
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=Path("pr_exports"),
+    default=Path("gh_pr_exports"),
     show_default=True,
     help="Directory for exported PR JSON files",
+)
+@click.option(
+    "-cn",
+    "--chinese",
+    "use_chinese",
+    is_flag=True,
+    default=False,
+    help="Output AI analysis in Chinese",
 )
 def search(
     query: str,
@@ -353,6 +361,7 @@ def search(
     save_json_flag: bool,
     no_save_json_flag: bool,
     output_dir: Path,
+    use_chinese: bool,
 ):
     """Search for PRs and commits matching a query."""
     print_banner()
@@ -400,7 +409,8 @@ def search(
                     console.print()
 
             if analyze:
-                ai_analyzer = AIAnalyzer()
+                language = "cn" if use_chinese else "en"
+                ai_analyzer = AIAnalyzer(language=language)
                 if not ai_analyzer.is_available:
                     console.print(
                         "\n[yellow]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/yellow]"
@@ -409,17 +419,36 @@ def search(
 
                 console.print("\n[bold cyan]Running AI analysis...[/bold cyan]\n")
 
+                # analyze and save each item immediately
                 items_to_analyze = [r.item for r in results[:5]]
-                analyzed = ai_analyzer.batch_analyze(
-                    items_to_analyze, include_diff=True, diff_viewer=diff_viewer
-                )
+                analyzed = []
+                exporter = None
+                if save_json:
+                    exporter = PRJSONExporter(
+                        repo_name=pr_collector.repo, output_dir=output_dir
+                    )
 
-                for item, analysis in analyzed:
+                for idx, item in enumerate(items_to_analyze, 1):
+                    console.print(f"[cyan]Analyzing {idx}/{len(items_to_analyze)}...[/cyan]")
+                    analysis = ai_analyzer.analyze(
+                        item, include_diff=True, diff_viewer=diff_viewer
+                    )
+                    analyzed.append((item, analysis))
+
                     if analysis:
                         ai_analyzer.display_analysis(item, analysis)
 
-                save_report = Confirm.ask("\nSave analysis report to file?")
-                if save_report:
+                    # save JSON immediately after each analysis
+                    if save_json and exporter:
+                        if hasattr(item, "number"):
+                            try:
+                                file_path = exporter.export_pr(item.number, title_hint=item.title)
+                                console.print(f"[green]✓ JSON saved: {file_path}[/green]\n")
+                            except Exception as exc:
+                                console.print(f"[red]Failed to export PR #{item.number}: {exc}[/red]\n")
+
+                # save report automatically if save_json is enabled
+                if save_json and analyzed:
                     report = ai_analyzer.generate_summary_report(analyzed, query)
                     report_file = (
                         f"pr_analysis_report_{pr_collector.repo.replace('/', '_')}.md"
@@ -427,7 +456,8 @@ def search(
                     Path(report_file).write_text(report)
                     console.print(f"[green]✓ Report saved to: {report_file}[/green]")
 
-        if save_json:
+        elif save_json:
+            # if not analyzing, still export JSON files
             pr_pairs: List[Tuple[int, Optional[str]]] = []
             for result in results:
                 if result.item_type == "PR":
@@ -467,9 +497,17 @@ def search(
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=Path("pr_exports"),
+    default=Path("gh_pr_exports"),
     show_default=True,
     help="Directory for exported PR JSON files",
+)
+@click.option(
+    "-cn",
+    "--chinese",
+    "use_chinese",
+    is_flag=True,
+    default=False,
+    help="Output AI analysis in Chinese",
 )
 def view_pr(
     pr_number: int,
@@ -478,6 +516,7 @@ def view_pr(
     save_json_flag: bool,
     no_save_json_flag: bool,
     output_dir: Path,
+    use_chinese: bool,
 ):
     """View details of a specific PR."""
     print_banner()
@@ -527,7 +566,8 @@ def view_pr(
             diff_viewer.display_pr_diff(pr_number)
 
         if analyze:
-            ai_analyzer = AIAnalyzer()
+            language = "cn" if use_chinese else "en"
+            ai_analyzer = AIAnalyzer(language=language)
             if ai_analyzer.is_available:
                 console.print("\n[bold cyan]Running AI analysis...[/bold cyan]\n")
                 analysis = ai_analyzer.analyze(
@@ -751,9 +791,17 @@ def interactive():
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=Path("pr_exports"),
+    default=Path("gh_pr_exports"),
     show_default=True,
     help="Directory for exported PR JSON files",
+)
+@click.option(
+    "-cn",
+    "--chinese",
+    "use_chinese",
+    is_flag=True,
+    default=False,
+    help="Output AI analysis in Chinese",
 )
 def traverse(
     repo: Optional[str],
@@ -761,6 +809,7 @@ def traverse(
     save_json_flag: bool,
     no_save_json_flag: bool,
     output_dir: Path,
+    use_chinese: bool,
 ):
     """Traverse recent PRs and analyze them with AI."""
     print_banner()
@@ -772,7 +821,8 @@ def traverse(
         console.print("[red]Days must be a positive integer[/red]")
         sys.exit(1)
 
-    ai_analyzer = AIAnalyzer()
+    language = "cn" if use_chinese else "en"
+    ai_analyzer = AIAnalyzer(language=language)
     if not ai_analyzer.is_available:
         console.print(
             "[red]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/red]"
@@ -803,6 +853,13 @@ def traverse(
 
         analyzed_items: List[Tuple[PullRequest, Optional[str]]] = []
 
+        # initialize exporter if save_json is enabled
+        exporter = None
+        if save_json:
+            exporter = PRJSONExporter(
+                repo_name=pr_collector.repo, output_dir=output_dir
+            )
+
         def analyze_pr_group(prs: List[PullRequest], label: str) -> None:
             if not prs:
                 console.print(f"[yellow]No {label.lower()} to analyze[/yellow]")
@@ -824,29 +881,28 @@ def traverse(
                 if analysis:
                     ai_analyzer.display_analysis(pr, analysis)
 
+                # save JSON immediately after each analysis
+                if save_json and exporter:
+                    try:
+                        file_path = exporter.export_pr(pr.number, title_hint=pr.title)
+                        console.print(f"[green]✓ JSON saved: {file_path}[/green]\n")
+                    except Exception as exc:
+                        console.print(f"[red]Failed to export PR #{pr.number}: {exc}[/red]\n")
+
         analyze_pr_group(merged_prs, "Merged PRs")
         analyze_pr_group(open_prs, "Open PRs")
 
-        if analyzed_items:
-            save_report = Confirm.ask("\nSave traversal analysis report?", default=False)
-            if save_report:
-                report = ai_analyzer.generate_summary_report(
-                    analyzed_items,
-                    query=f"Traversal analysis for last {days} days",
-                )
-                report_file = (
-                    f"pr_traversal_report_{pr_collector.repo.replace('/', '_')}_{days}d.md"
-                )
-                Path(report_file).write_text(report)
-                console.print(f"[green]✓ Report saved to: {report_file}[/green]")
-
-        if save_json:
-            pr_pairs: List[Tuple[int, Optional[str]]] = []
-            for pr in merged_prs:
-                pr_pairs.append((pr.number, pr.title))
-            for pr in open_prs:
-                pr_pairs.append((pr.number, pr.title))
-            export_pr_datasets(pr_collector.repo, pr_pairs, output_dir)
+        # save report automatically if save_json is enabled
+        if analyzed_items and save_json:
+            report = ai_analyzer.generate_summary_report(
+                analyzed_items,
+                query=f"Traversal analysis for last {days} days",
+            )
+            report_file = (
+                f"pr_traversal_report_{pr_collector.repo.replace('/', '_')}_{days}d.md"
+            )
+            Path(report_file).write_text(report)
+            console.print(f"[green]✓ Report saved to: {report_file}[/green]")
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")

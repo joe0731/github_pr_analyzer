@@ -28,8 +28,14 @@ SOFTWARE.
 import json
 from pathlib import Path
 from typing import Optional, List, Union
-from rich.console import Console
+from rich.console import Console, Group
 from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.style import Style
+from rich.table import Table
+from rich.text import Text
+from rich.rule import Rule
+from rich.padding import Padding
 
 from .config import config
 from .pr_collector import PullRequest
@@ -37,20 +43,26 @@ from .commit_collector import Commit
 from .diff_viewer import DiffViewer
 from .utils import run_command
 
-console = Console()
+console = Console(soft_wrap=True)
 
 
 class AIAnalyzer:
     """analyzer for summarizing PRs and commits using AI."""
 
-    def __init__(self, cursor_agent_path: Optional[str] = None):
+    def __init__(
+        self,
+        cursor_agent_path: Optional[str] = None,
+        language: str = "en",
+    ):
         """
         initialize AI analyzer.
 
         Args:
             cursor_agent_path: path to cursor-agent executable
+            language: output language ('en' for English, 'cn' for Chinese)
         """
         self.cursor_agent_path = cursor_agent_path or config.cursor_agent_path
+        self.language = language
         self.is_available = self._check_availability()
 
     def _check_availability(self) -> bool:
@@ -96,11 +108,18 @@ class AIAnalyzer:
             str: formatted prompt
         """
         if isinstance(item, PullRequest):
+            # build author display string
+            author_display = item.author
+            if item.author_name:
+                author_display = f"{item.author_name} (@{item.author})"
+            if item.author_email:
+                author_display += f" <{item.author_email}>"
+
             base_info = f"""
 # Pull Request Analysis
 
 **PR #{item.number}**: {item.title}
-**Author**: {item.author}
+**Author**: {author_display}
 **State**: {item.state}
 **Created**: {item.created_at}
 **URL**: {item.url}
@@ -133,37 +152,10 @@ class AIAnalyzer:
 - **Is Merge Commit**: {item.is_merge}
 """
 
-        if analysis_type == "summary":
-            task = """
-Please provide a concise summary of this change:
-1. What is the main purpose of this change?
-2. What key functionality or features are affected?
-3. What is the overall impact?
-
-Keep the summary under 200 words.
-"""
-        elif analysis_type == "impact":
-            task = """
-Please analyze the impact of this change:
-1. What areas of the codebase are affected?
-2. What are the potential risks or benefits?
-3. Are there any breaking changes?
-4. What testing or validation is recommended?
-
-Provide a detailed but concise analysis.
-"""
-        elif analysis_type == "technical":
-            task = """
-Please provide a technical analysis:
-1. What technical approach was used?
-2. Are there any notable implementation details?
-3. How does this fit into the overall architecture?
-4. Are there any performance or security considerations?
-
-Focus on technical depth.
-"""
+        if self.language == "cn":
+            task = self._get_chinese_task(analysis_type)
         else:
-            task = "Please analyze this change and provide insights."
+            task = self._get_english_task(analysis_type)
 
         prompt = base_info + "\n" + task
 
@@ -178,6 +170,72 @@ Focus on technical depth.
 """
 
         return prompt
+
+    def _get_english_task(self, analysis_type: str) -> str:
+        """get English task description for AI analysis."""
+        if analysis_type == "summary":
+            return """
+Please provide a concise summary of this change:
+1. What is the main purpose of this change?
+2. What key functionality or features are affected?
+3. What is the overall impact?
+
+Keep the summary under 200 words.
+"""
+        elif analysis_type == "impact":
+            return """
+Please analyze the impact of this change:
+1. What areas of the codebase are affected?
+2. What are the potential risks or benefits?
+3. Are there any breaking changes?
+4. What testing or validation is recommended?
+
+Provide a detailed but concise analysis.
+"""
+        elif analysis_type == "technical":
+            return """
+Please provide a technical analysis:
+1. What technical approach was used?
+2. Are there any notable implementation details?
+3. How does this fit into the overall architecture?
+4. Are there any performance or security considerations?
+
+Focus on technical depth.
+"""
+        return "Please analyze this change and provide insights."
+
+    def _get_chinese_task(self, analysis_type: str) -> str:
+        """get Chinese task description for AI analysis."""
+        if analysis_type == "summary":
+            return """
+请用中文提供此变更的简要总结：
+1. 此变更的主要目的是什么？
+2. 受影响的关键功能或特性有哪些？
+3. 整体影响是什么？
+
+请保持总结在 200 字以内，使用左对齐格式。
+"""
+        elif analysis_type == "impact":
+            return """
+请用中文分析此变更的影响：
+1. 代码库中哪些区域受到影响？
+2. 有哪些潜在的风险或收益？
+3. 是否有破坏性变更？
+4. 建议进行哪些测试或验证？
+
+请提供详细但简洁的分析，使用左对齐格式。
+"""
+        elif analysis_type == "technical":
+            return """
+请用中文提供技术分析：
+1. 使用了什么技术方案？
+2. 有哪些值得注意的实现细节？
+3. 这如何融入整体架构？
+4. 有哪些性能或安全方面的考虑？
+
+请专注于技术深度，使用左对齐格式。
+"""
+        return "请用中文分析此变更并提供见解，使用左对齐格式。"
 
     def analyze(
         self,
@@ -274,28 +332,84 @@ Focus on technical depth.
 
     def display_analysis(self, item: Union[PullRequest, Commit], analysis: str):
         """
-        display analysis result in a formatted way.
+        display analysis result in a formatted way with author info and adaptive width.
 
         Args:
             item: analyzed item
             analysis: analysis text
         """
-        if isinstance(item, PullRequest):
-            title = f"AI Analysis: PR #{item.number} - {item.title}"
-        else:
-            title = f"AI Analysis: Commit {item.short_sha}"
+        # build metadata table for item info (left-aligned)
+        meta_table = Table.grid(padding=(0, 2), expand=False)
+        meta_table.add_column(style="bold cyan", justify="left", width=12)
+        meta_table.add_column(style="white", justify="left")
 
-        console.print("\n" + "=" * 80)
-        console.print(f"[bold cyan]{title}[/bold cyan]")
-        console.print("=" * 80 + "\n")
+        if isinstance(item, PullRequest):
+            title = f"📋 PR #{item.number}: {item.title}"
+            meta_table.add_row("Author:", f"@{item.author}")
+            if item.author_name:
+                meta_table.add_row("Name:", item.author_name)
+            if item.author_email:
+                meta_table.add_row("Email:", f"[cyan]{item.author_email}[/cyan]")
+            meta_table.add_row("State:", self._format_state(item.state))
+            meta_table.add_row("URL:", f"[link={item.url}]{item.url}[/link]")
+        else:
+            title = f"📝 Commit {item.short_sha}"
+            meta_table.add_row("Author:", item.author)
+            meta_table.add_row("Email:", f"[cyan]{item.author_email}[/cyan]")
+            meta_table.add_row("Committer:", item.committer)
+            meta_table.add_row("Date:", str(item.committed_date))
+            commit_url = item.get_url()
+            if commit_url:
+                meta_table.add_row("URL:", f"[link={commit_url}]{commit_url}[/link]")
+            meta_table.add_row("Files:", str(item.files_changed))
+            meta_table.add_row(
+                "Changes:",
+                f"[green]+{item.insertions}[/green] / [red]-{item.deletions}[/red]"
+            )
 
         try:
-            md = Markdown(analysis)
-            console.print(md)
-        except Exception:
-            console.print(analysis)
+            # create header panel with metadata (left-aligned)
+            header_panel = Panel(
+                meta_table,
+                title=f"[bold white]{title}[/bold white]",
+                title_align="left",
+                border_style="bright_blue",
+                style=Style(bgcolor="grey15"),
+                padding=(0, 1),
+            )
 
-        console.print("\n")
+            # create analysis content with markdown (left-aligned)
+            md = Markdown(analysis, code_theme="monokai", justify="left")
+            content_panel = Panel(
+                md,
+                title="[bold green]✨ AI Analysis[/bold green]",
+                title_align="left",
+                border_style="green",
+                style=Style(color="white", bgcolor="grey23"),
+                padding=(1, 2),
+            )
+
+            # print with adaptive width
+            console.print()
+            console.print(header_panel)
+            console.print(content_panel)
+            console.print()
+
+        except Exception:
+            # fallback display
+            console.print()
+            console.print(Rule(title, style="cyan"))
+            console.print(f"[white]{analysis}[/white]")
+            console.print()
+
+    def _format_state(self, state: str) -> str:
+        """format PR state with color and emoji."""
+        state_formats = {
+            "MERGED": "[magenta]✅ MERGED[/magenta]",
+            "OPEN": "[green]🔄 OPEN[/green]",
+            "CLOSED": "[red]❌ CLOSED[/red]",
+        }
+        return state_formats.get(state, state)
 
     def generate_summary_report(
         self,
@@ -328,14 +442,22 @@ Focus on technical depth.
         for idx, (item, analysis) in enumerate(analyzed_items, 1):
             if isinstance(item, PullRequest):
                 report_lines.append(f"## {idx}. PR #{item.number}: {item.title}")
-                report_lines.append(f"- **Author**: {item.author}")
+                # build author display string
+                author_display = item.author
+                if item.author_name:
+                    author_display = f"{item.author_name} (@{item.author})"
+                report_lines.append(f"- **Author**: {author_display}")
+                if item.author_email:
+                    report_lines.append(f"- **Email**: {item.author_email}")
                 report_lines.append(f"- **State**: {item.state}")
                 report_lines.append(f"- **URL**: {item.url}")
             else:
                 title = item.message.split("\n")[0]
                 report_lines.append(f"## {idx}. Commit {item.short_sha}: {title}")
-                report_lines.append(f"- **Author**: {item.author}")
+                report_lines.append(f"- **Author**: {item.author} <{item.author_email}>")
+                report_lines.append(f"- **Committer**: {item.committer}")
                 report_lines.append(f"- **Date**: {item.committed_date}")
+                report_lines.append(f"- **Changes**: +{item.insertions} / -{item.deletions} ({item.files_changed} files)")
                 if item.get_url():
                     report_lines.append(f"- **URL**: {item.get_url()}")
 

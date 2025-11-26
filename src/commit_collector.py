@@ -245,12 +245,13 @@ class CommitCollector:
             console.print(f"[red]Error collecting commits: {str(e)}[/red]")
             return []
 
-    def get_commit_details(self, sha: str) -> Optional[Commit]:
+    def get_commit_details(self, sha: str, silent: bool = False) -> Optional[Commit]:
         """
         get detailed information about a specific commit.
 
         Args:
             sha: commit SHA (full or short)
+            silent: if True, do not print error messages
 
         Returns:
             Commit object or None if not found
@@ -260,7 +261,8 @@ class CommitCollector:
             return Commit(git_commit, self.repo_name)
 
         except Exception as e:
-            console.print(f"[red]Error getting commit {sha}: {str(e)}[/red]")
+            if not silent:
+                console.print(f"[red]Error getting commit {sha}: {str(e)}[/red]")
             return None
 
     def get_commits_by_pr(self, pr_number: int, months: int = 3) -> List[Commit]:

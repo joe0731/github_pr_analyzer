@@ -134,13 +134,17 @@ class TestPRJSONExporter(TestCase):
         self.assertIn("adjust flow", commits[0]["title"])
         self.assertTrue(commits[0]["files"], "commit files should not be empty")
         self.assertIn("sample.txt", commits[0]["files"][0]["path"])
-        self.assertIn("@@", commits[0]["files"][0]["diff"])
+        # diff is now an array of lines for better readability
+        diff_lines = commits[0]["files"][0]["diff"]
+        self.assertIsInstance(diff_lines, list)
+        self.assertTrue(any("@@" in line for line in diff_lines))
 
         conversation = data["conversation"]
-        self.assertEqual(conversation["issue_comments"][0]["body"], "please add a test")
-        self.assertEqual(
-            conversation["review_threads"][0]["comments"][0]["body"],
+        # body is now an array of lines for better readability
+        self.assertIn("please add a test", conversation["issue_comments"][0]["body"])
+        self.assertIn(
             "nit: rename var",
+            conversation["review_threads"][0]["comments"][0]["body"],
         )
         self.assertEqual(conversation["reviews"][0]["state"], "APPROVED")
 

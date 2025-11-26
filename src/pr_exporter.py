@@ -33,7 +33,7 @@ class PRJSONExporter:
             raise ValueError("repo_name is required for exporting")
 
         if output_dir is None:
-            resolved_output = Path.cwd() / "pr_exports"
+            resolved_output = Path.cwd() / "gh_pr_exports"
         else:
             resolved_output = Path(output_dir)
 
@@ -93,7 +93,6 @@ class PRJSONExporter:
             "headRefName",
             "commits",
             "comments",
-            "reviewThreads",
             "reviews",
         ]
 
@@ -118,20 +117,73 @@ class PRJSONExporter:
     def _build_pr_section(
         self, payload: Dict[str, Any], pr_number: int, pr_title: str
     ) -> Dict[str, Any]:
+        author_info = self._extract_author_info(payload.get("author"))
         pr_section = {
             "number": pr_number,
             "title": pr_title,
             "url": payload.get("url"),
-            "author": self._safe_author(payload.get("author")),
+            "author": author_info.get("login", "unknown"),
+            "author_name": author_info.get("name"),
+            "author_email": author_info.get("email"),
             "state": payload.get("state"),
             "created_at": payload.get("createdAt"),
             "updated_at": payload.get("updatedAt"),
             "merged_at": payload.get("mergedAt"),
             "base_ref": payload.get("baseRefName"),
             "head_ref": payload.get("headRefName"),
-            "body": payload.get("body"),
+            "body": self._format_body_text(payload.get("body")),
         }
         return pr_section
+
+    def _format_body_text(self, body: Optional[str]) -> List[str]:
+        """
+        format body text for better readability in JSON.
+
+        - convert \\r\\n to \\n
+        - remove trailing whitespace from each line
+        - split into lines array
+
+        Args:
+            body: raw body text
+
+        Returns:
+            list of lines for readable JSON output
+        """
+        if not body:
+            return []
+
+        # normalize line endings: \r\n -> \n, \r -> \n
+        normalized = body.replace("\r\n", "\n").replace("\r", "\n")
+
+        # split into lines and strip trailing whitespace
+        lines = [line.rstrip() for line in normalized.split("\n")]
+
+        return lines
+
+    def _extract_author_info(self, author_data: Any) -> Dict[str, Optional[str]]:
+        """
+        extract author information including login, name and email.
+
+        Args:
+            author_data: author data from GitHub API
+
+        Returns:
+            dict with login, name, and email fields
+        """
+        result: Dict[str, Optional[str]] = {
+            "login": None,
+            "name": None,
+            "email": None,
+        }
+
+        if isinstance(author_data, dict):
+            result["login"] = author_data.get("login")
+            result["name"] = author_data.get("name")
+            result["email"] = author_data.get("email")
+        elif isinstance(author_data, str):
+            result["login"] = author_data
+
+        return result
 
     def _build_commit_entries(self, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         entries: List[Dict[str, Any]] = []
@@ -154,20 +206,65 @@ class PRJSONExporter:
                 continue
             seen_shas.add(sha)
 
-            commit_obj = self.commit_collector.get_commit_details(sha)
+            # try local repo first (silent mode), then fallback to API
+            commit_obj = self.commit_collector.get_commit_details(sha, silent=True)
             title = self._extract_commit_title(commit_obj, commit_data)
             message = self._extract_commit_message(commit_obj, commit_data)
-            file_entries = self.diff_viewer.get_commit_file_diffs(sha)
+            committer_info = self._extract_committer_info(commit_obj, commit_data)
+
+            # try local repo first, fallback to GitHub API if commit not available locally
+            file_entries = self.diff_viewer.get_commit_file_diffs(sha, silent=True)
+            if not file_entries:
+                file_entries = self.diff_viewer.get_commit_file_diffs_from_api(sha)
 
             entry = {
                 "id": sha,
                 "title": title,
                 "message": message,
+                "committer_name": committer_info.get("name"),
+                "committer_email": committer_info.get("email"),
                 "files": file_entries,
             }
             entries.append(entry)
 
         return entries
+
+    def _extract_committer_info(
+        self, commit_obj: Optional[Commit], fallback_data: Dict[str, Any]
+    ) -> Dict[str, Optional[str]]:
+        """
+        extract committer name and email from commit.
+
+        Args:
+            commit_obj: local Commit object (may be None)
+            fallback_data: commit data from GitHub API
+
+        Returns:
+            dict with name and email fields
+        """
+        result: Dict[str, Optional[str]] = {
+            "name": None,
+            "email": None,
+        }
+
+        # try local commit object first
+        if commit_obj:
+            result["name"] = commit_obj.committer
+            result["email"] = commit_obj.author_email
+            return result
+
+        # fallback to GitHub API data
+        # GitHub API returns authors/committers in nested structure
+        authors = fallback_data.get("authors")
+        if isinstance(authors, dict):
+            nodes = authors.get("nodes", [])
+            if nodes and isinstance(nodes, list) and len(nodes) > 0:
+                author_node = nodes[0]
+                if isinstance(author_node, dict):
+                    result["name"] = author_node.get("name")
+                    result["email"] = author_node.get("email")
+
+        return result
 
     def _extract_commit_title(
         self, commit_obj: Optional[Commit], fallback_data: Dict[str, Any]
@@ -305,12 +402,21 @@ class PRJSONExporter:
             return author_data
         return "unknown"
 
-    def _coalesce_body(self, node: Dict[str, Any]) -> str:
+    def _coalesce_body(self, node: Dict[str, Any]) -> List[str]:
+        """
+        extract and format body text from node.
+
+        Args:
+            node: data node containing body text
+
+        Returns:
+            list of lines for readable JSON output
+        """
         for key in ["bodyText", "body"]:
             value = node.get(key)
             if value:
-                return str(value)
-        return ""
+                return self._format_body_text(str(value))
+        return []
 
     def _build_filename(self, pr_number: int, title: str) -> str:
         safe_repo = self.repo_name.replace("/", "_")

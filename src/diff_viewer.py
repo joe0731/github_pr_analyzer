@@ -182,17 +182,18 @@ class DiffViewer:
             console.print(f"[red]Error getting commit files: {str(e)}[/red]")
             return []
 
-    def get_commit_file_diffs(self, sha: str) -> List[Dict[str, str]]:
+    def get_commit_file_diffs(self, sha: str, silent: bool = False) -> List[Dict[str, any]]:
         """
         get per-file diffs for a commit.
 
         Args:
             sha: commit SHA
+            silent: if True, do not print error messages
 
         Returns:
-            list: list of dictionaries with file path and diff text
+            list: list of dictionaries with file path and diff lines array
         """
-        entries: List[Dict[str, str]] = []
+        entries: List[Dict[str, any]] = []
         try:
             commit = self.repo.commit(sha)
 
@@ -207,16 +208,70 @@ class DiffViewer:
                 if not path:
                     path = diff_item.a_path or ""
 
-                diff_text = ""
+                diff_lines: List[str] = []
                 if diff_item.diff:
                     diff_text = diff_item.diff.decode("utf-8", errors="replace")
+                    diff_lines = diff_text.splitlines()
 
-                entries.append({"path": path, "diff": diff_text})
+                entries.append({"path": path, "diff": diff_lines})
 
             return entries
 
         except Exception as e:
-            console.print(f"[red]Error getting commit file diffs: {str(e)}[/red]")
+            if not silent:
+                console.print(f"[red]Error getting commit file diffs: {str(e)}[/red]")
+            return []
+
+    def get_commit_file_diffs_from_api(self, sha: str) -> List[Dict[str, any]]:
+        """
+        get per-file diffs for a commit using GitHub API.
+
+        this method is used as a fallback when the commit is not available locally
+        (e.g., when analyzing a remote repository without cloning it).
+
+        Args:
+            sha: commit SHA
+
+        Returns:
+            list: list of dictionaries with file path and diff lines array
+        """
+        if not self.repo_name:
+            return []
+
+        entries: List[Dict[str, any]] = []
+        try:
+            # get commit diff using gh api
+            command = [
+                "gh",
+                "api",
+                f"repos/{self.repo_name}/commits/{sha}",
+                "--jq",
+                ".files[] | {path: .filename, diff: .patch}",
+            ]
+            _, stdout, _ = run_command(command)
+
+            if not stdout.strip():
+                return []
+
+            # parse jq output (one json object per line)
+            for line in stdout.strip().split("\n"):
+                if not line.strip():
+                    continue
+                try:
+                    file_data = json.loads(line)
+                    diff_text = file_data.get("diff", "")
+                    diff_lines = diff_text.splitlines() if diff_text else []
+                    entries.append({
+                        "path": file_data.get("path", ""),
+                        "diff": diff_lines,
+                    })
+                except json.JSONDecodeError:
+                    continue
+
+            return entries
+
+        except Exception:
+            # silently fail, this is a fallback method
             return []
 
     def display_commit_diff(self, sha: str, max_lines: int = 500):

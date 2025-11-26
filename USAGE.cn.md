@@ -26,7 +26,7 @@ gh-pr-analyzer search "query" --analyze
 --show-diff, -d 显示代码变更
 --smart-search  启用/禁用 AI 关键词提取
 --save-json     将匹配到的 PR 导出为 JSON
---output-dir    JSON 文件输出目录 (默认: pr_exports)
+--output-dir    JSON 文件输出目录 (默认: gh_pr_exports)
 ```
 
 ### `collect` (收集)
@@ -51,7 +51,7 @@ gh-pr-analyzer view-commit <SHA>
 ### JSON 导出提示
 - `view-pr` 默认写入 JSON，可通过 `--no-save-json` 关闭。
 - `collect`、`search`、`traverse` 在传入 `--save-json` 时会导出所涉及的 PR。
-- 文件默认位于 `pr_exports/`，命名为 `repo_name_<pr>_<title>.json`，内容包括 PR 元信息、所有 commit（ID、标题、message、逐文件 diff）以及完整会话。结构说明见 [README.cn.md](README.cn.md#-json-导出格式)。
+- 文件默认位于 `gh_pr_exports/`，命名为 `repo_name_<pr>_<title>.json`，内容包括 PR 元信息、所有 commit（ID、标题、message、逐文件 diff）以及完整会话。结构说明见 [README.cn.md](README.cn.md#-json-导出格式)。
 
 ## 配置说明
 
