@@ -39,59 +39,121 @@ export DEFAULT_MONTHS=6
 # 1. Interactive Mode (Best for starting)
 gh-pr-analyzer interactive
 
-# 2. Search with AI Analysis
+# 2. Search with AI Analysis (English output)
 gh-pr-analyzer search "authentication bug" --analyze
 
-# 3. Collect Data
+# 3. Search with AI Analysis (Chinese output)
+gh-pr-analyzer search "authentication bug" --analyze -cn
+
+# 4. Collect Data
 gh-pr-analyzer collect --save-json
 
-# 4. Generate Daily/Weekly Report + Export Datasets
+# 5. Generate Daily/Weekly Report + Export Datasets
 gh-pr-analyzer traverse --days 7 --save-json
-gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json
+gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json -cn
 ```
 
 All CLI workflows expose matching `--save-json` / `--no-save-json` toggles so you can enable exports when needed and opt out (for example, disable the default `view-pr` export with `--no-save-json`).
+
+### Language Options
+
+Use `-cn` or `--chinese` flag to get AI analysis output in Chinese:
+
+```bash
+# Chinese output
+gh-pr-analyzer search "quantization" -a -cn
+gh-pr-analyzer view-pr 588 -a -cn
+gh-pr-analyzer traverse --days 7 -cn
+```
 
 ## ✨ Features
 - 🔍 **Smart Search**: AI-powered keyword extraction
 - 📊 **Data Collection**: PRs and merge commits statistics
 - 🔄 **Diff Viewing**: Syntax-highlighted code changes
-- 🤖 **AI Analysis**: Summarization via cursor-agent
+- 🤖 **AI Analysis**: Summarization via cursor-agent with English/Chinese output
 - 📅 **Traverse Mode**: Batch analysis for reporting
 - 🗂 **JSON Export**: Persist PR, commit, and review conversations as structured JSON
+- 🌐 **Multi-language**: Support for English and Chinese AI analysis output
+- 💾 **Instant Save**: JSON files saved immediately after each PR analysis
+- 🎨 **Enhanced Display**: Beautiful terminal output with colors and formatting
 
 For detailed command usage, see [USAGE.md](USAGE.md).
 
 ## 🗂 JSON Export Format
 
-All major workflows (`collect`, `search`, `traverse`, `view-pr`) share the same `--save-json` / `--no-save-json` flags (with `view-pr` defaulting to export unless `--no-save-json` is specified). Files land in `gh_pr_exports/` unless `--output-dir` is provided and follow the pattern `repo_name_<pr_num>_<pr_title>.json`.
+All major workflows (`collect`, `search`, `traverse`, `view-pr`) share the same `--save-json` / `--no-save-json` flags (with `view-pr` defaulting to export unless `--no-save-json` is specified). Files land in `gh_pr_exports/` unless `--output-dir` is provided.
+
+### File Naming Convention
+
+Files follow the pattern:
+```
+{repo}_{merged_pr|open_pr}_{pr_number}_{title}_{timestamp}.json
+```
+
+Examples:
+- `NVIDIA_TensorRT_merged_pr_588_Support_AutoQuantize_20251125_1423.json`
+- `pytorch_pytorch_open_pr_123_Add_feature_20251126_0930.json`
+
+The timestamp uses the merge time for merged PRs, or the last update time for open PRs.
+
+### JSON Structure
 
 Each JSON document contains:
 
 - `repo`: the `owner/repo` slug used for collection
-- `pr`: metadata (number, title, author, state, description, base/head refs, timestamps, URL)
-- `commits`: ordered list of commits belonging to the PR with
+- `pr`: metadata including:
+  - `number`, `title`, `url`, `state`
+  - `author`, `author_name`, `author_email`
+  - `created_at`, `updated_at`, `merged_at`
+  - `base_ref`, `head_ref`
+  - `body`: PR description as line array (for readability)
+- `commits`: ordered list of commits with:
   - `id`: full commit SHA
   - `title`: first line of the commit message
   - `message`: full commit body
-  - `files`: array of `{ "path": "<file>", "diff": "<unified diff>" }`
+  - `committer_name`, `committer_email`
+  - `files`: array of `{ "path": "<file>", "diff": ["line1", "line2", ...] }`
 - `conversation`: threaded review data
   - `issue_comments`: top-level PR discussion
-  - `review_threads`: code review threads with inline comments and resolution state
+  - `review_threads`: code review threads (note: limited availability via GitHub API)
   - `reviews`: review summaries (approve/comment/request changes)
 
 > Example snippet:
 ```json
 {
   "repo": "octo-org/octo-repo",
-  "pr": { "number": 42, "title": "Fix login" },
+  "pr": {
+    "number": 42,
+    "title": "Fix login",
+    "author": "octocat",
+    "author_name": "The Octocat",
+    "author_email": "octocat@github.com",
+    "state": "MERGED",
+    "body": [
+      "## Summary",
+      "This PR fixes the login flow.",
+      "",
+      "## Changes",
+      "- Fixed authentication"
+    ]
+  },
   "commits": [
     {
       "id": "abc123...",
       "title": "Adjust auth flow",
       "message": "Adjust auth flow\n\n- add checks...\n",
+      "committer_name": "The Octocat",
+      "committer_email": "octocat@github.com",
       "files": [
-        { "path": "auth/login.py", "diff": "@@ -1,3 +1,4 @@" }
+        {
+          "path": "auth/login.py",
+          "diff": [
+            "@@ -1,3 +1,4 @@",
+            " import os",
+            "-old_line",
+            "+new_line"
+          ]
+        }
       ]
     }
   ],
@@ -104,3 +166,16 @@ Each JSON document contains:
 ```
 
 Use these exports to feed downstream tooling, audits, or offline review workflows.
+
+## 🎨 AI Analysis Display
+
+The AI analysis output features:
+- **Metadata Panel**: Shows author, email, state, URL with color-coded status
+- **Analysis Panel**: Dark background with white text for readability
+- **Left-aligned Content**: All text left-aligned for better reading experience
+- **Adaptive Width**: Automatically adjusts to terminal window size
+
+State indicators:
+- ✅ **MERGED** (magenta)
+- 🔄 **OPEN** (green)
+- ❌ **CLOSED** (red)
