@@ -433,12 +433,28 @@ def collect(
 @click.option("--months", "-m", type=int, default=3, help="Months to look back")
 @click.option("--min-score", type=int, default=30, help="Minimum match score (0-100)")
 @click.option("--max-results", type=int, default=20, help="Maximum number of results")
-@click.option("--analyze", "-a", is_flag=True, help="Analyze results with AI")
+@click.option(
+    "--ai",
+    "use_ai",
+    is_flag=True,
+    default=False,
+    help="Enable AI analysis (requires CURSOR_AGENT_PATH)",
+)
+@click.option(
+    "--analyze",
+    "-a",
+    "use_ai_legacy",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="alias of --ai",
+)
 @click.option("--show-diff", "-d", is_flag=True, help="Show diff for each result")
 @click.option(
     "--smart-search/--no-smart-search",
-    default=True,
-    help="Use AI-powered smart search (default: enabled)",
+    default=False,
+    show_default=True,
+    help="Use AI-powered smart search (requires --ai)",
 )
 @click.option(
     "--save-json",
@@ -467,7 +483,7 @@ def collect(
     "use_chinese",
     is_flag=True,
     default=False,
-    help="Output AI analysis in Chinese",
+    help="Output AI analysis in Chinese (requires --ai)",
 )
 def search(
     query: str,
@@ -475,7 +491,8 @@ def search(
     months: int,
     min_score: int,
     max_results: int,
-    analyze: bool,
+    use_ai: bool,
+    use_ai_legacy: bool,
     show_diff: bool,
     smart_search: bool,
     save_json_flag: bool,
@@ -488,6 +505,12 @@ def search(
 
     if not check_prerequisites():
         sys.exit(1)
+
+    if use_ai_legacy:
+        use_ai = True
+
+    if smart_search and (not use_ai):
+        raise click.UsageError("--smart-search requires --ai")
 
     save_json = resolve_json_export_flag(
         save_json_flag, no_save_json_flag, default=False, command_name="search"
@@ -516,7 +539,7 @@ def search(
         if not results:
             return
 
-        if show_diff or analyze:
+        if show_diff or use_ai:
             diff_viewer = DiffViewer(repo_name=pr_collector.repo)
 
             if show_diff:
@@ -528,7 +551,7 @@ def search(
                         diff_viewer.display_commit_diff(result.item.sha, max_lines=100)
                     console.print()
 
-            if analyze:
+            if use_ai:
                 language = "cn" if use_chinese else "en"
                 ai_analyzer = AIAnalyzer(language=language)
                 if not ai_analyzer.is_available:
@@ -599,7 +622,22 @@ def search(
 @cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("pr_number", type=int)
 @click.option("--repo", "-r", help="Repository in format owner/repo")
-@click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
+@click.option(
+    "--ai",
+    "use_ai",
+    is_flag=True,
+    default=False,
+    help="Enable AI analysis (requires CURSOR_AGENT_PATH)",
+)
+@click.option(
+    "--analyze",
+    "-a",
+    "use_ai_legacy",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="alias of --ai",
+)
 @click.option(
     "--save-json",
     "save_json_flag",
@@ -627,12 +665,13 @@ def search(
     "use_chinese",
     is_flag=True,
     default=False,
-    help="Output AI analysis in Chinese",
+    help="Output AI analysis in Chinese (requires --ai)",
 )
 def view_pr(
     pr_number: int,
     repo: Optional[str],
-    analyze: bool,
+    use_ai: bool,
+    use_ai_legacy: bool,
     save_json_flag: bool,
     no_save_json_flag: bool,
     output_dir: Path,
@@ -647,6 +686,9 @@ def view_pr(
     save_json = resolve_json_export_flag(
         save_json_flag, no_save_json_flag, default=True, command_name="view-pr"
     )
+
+    if use_ai_legacy:
+        use_ai = True
 
     try:
         pr_collector = PRCollector(repo)
@@ -685,7 +727,7 @@ def view_pr(
         if show_diff:
             diff_viewer.display_pr_diff(pr_number)
 
-        if analyze:
+        if use_ai:
             language = "cn" if use_chinese else "en"
             ai_analyzer = AIAnalyzer(language=language)
             if ai_analyzer.is_available:
@@ -710,13 +752,31 @@ def view_pr(
 
 @cli.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("commit_sha")
-@click.option("--analyze", "-a", is_flag=True, help="Analyze with AI")
-def view_commit(commit_sha: str, analyze: bool):
+@click.option(
+    "--ai",
+    "use_ai",
+    is_flag=True,
+    default=False,
+    help="Enable AI analysis (requires CURSOR_AGENT_PATH)",
+)
+@click.option(
+    "--analyze",
+    "-a",
+    "use_ai_legacy",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="alias of --ai",
+)
+def view_commit(commit_sha: str, use_ai: bool, use_ai_legacy: bool):
     """View details of a specific commit."""
     print_banner()
 
     if not check_prerequisites():
         sys.exit(1)
+
+    if use_ai_legacy:
+        use_ai = True
 
     try:
         commit_collector = CommitCollector()
@@ -753,7 +813,7 @@ def view_commit(commit_sha: str, analyze: bool):
         if show_diff:
             diff_viewer.display_commit_diff(commit.sha)
 
-        if analyze:
+        if use_ai:
             ai_analyzer = AIAnalyzer()
             if ai_analyzer.is_available:
                 console.print("\n[bold cyan]Running AI analysis...[/bold cyan]\n")
@@ -769,12 +829,31 @@ def view_commit(commit_sha: str, analyze: bool):
 
 
 @cli.command(context_settings={"help_option_names": ["-h", "--help"]})
-def interactive():
+@click.option(
+    "--ai",
+    "use_ai",
+    is_flag=True,
+    default=False,
+    help="Enable AI features in interactive mode (requires CURSOR_AGENT_PATH)",
+)
+@click.option(
+    "--analyze",
+    "-a",
+    "use_ai_legacy",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="alias of --ai",
+)
+def interactive(use_ai: bool, use_ai_legacy: bool):
     """Interactive mode for exploring PRs and commits."""
     print_banner()
 
     if not check_prerequisites():
         sys.exit(1)
+
+    if use_ai_legacy:
+        use_ai = True
 
     try:
         repo = Prompt.ask(
@@ -794,10 +873,10 @@ def interactive():
         commits = commit_collector.collect_all_commits(months=months)
 
         diff_viewer = DiffViewer(repo_name=pr_collector.repo)
-        matcher = Matcher(
-            use_smart_search=True
-        )  # enable smart search by default in interactive mode
-        ai_analyzer = AIAnalyzer()
+        matcher = Matcher(use_smart_search=use_ai)
+        ai_analyzer = None
+        if use_ai:
+            ai_analyzer = AIAnalyzer()
 
         console.print(f"\n[bold cyan]Data collected:[/bold cyan]")
         console.print(f"  • Total PRs: {len(all_pr_list)}")
@@ -824,18 +903,19 @@ def interactive():
                 display_results_table(results)
 
                 if results:
-                    if Confirm.ask("\nAnalyze results with AI?"):
-                        if ai_analyzer.is_available:
-                            items = [r.item for r in results[:5]]
-                            analyzed = ai_analyzer.batch_analyze(
-                                items, include_diff=True, diff_viewer=diff_viewer
-                            )
+                    if use_ai and ai_analyzer is not None:
+                        if Confirm.ask("\nAnalyze results with AI?", default=False):
+                            if ai_analyzer.is_available:
+                                items = [r.item for r in results[:5]]
+                                analyzed = ai_analyzer.batch_analyze(
+                                    items, include_diff=True, diff_viewer=diff_viewer
+                                )
 
-                            for item, analysis in analyzed:
-                                if analysis:
-                                    ai_analyzer.display_analysis(item, analysis)
-                        else:
-                            console.print("[yellow]AI analysis not available[/yellow]")
+                                for item, analysis in analyzed:
+                                    if analysis:
+                                        ai_analyzer.display_analysis(item, analysis)
+                            else:
+                                console.print("[yellow]AI analysis not available[/yellow]")
 
             elif choice == "2":
                 pr_number = int(Prompt.ask("\n[cyan]Enter PR number[/cyan]"))
@@ -845,13 +925,14 @@ def interactive():
                     console.print(f"\n{pr}")
                     if Confirm.ask("Show diff?"):
                         diff_viewer.display_pr_diff(pr_number)
-                    if Confirm.ask("Analyze with AI?"):
-                        if ai_analyzer.is_available:
-                            analysis = ai_analyzer.analyze(
-                                pr, include_diff=True, diff_viewer=diff_viewer
-                            )
-                            if analysis:
-                                ai_analyzer.display_analysis(pr, analysis)
+                    if use_ai and ai_analyzer is not None:
+                        if Confirm.ask("Analyze with AI?", default=False):
+                            if ai_analyzer.is_available:
+                                analysis = ai_analyzer.analyze(
+                                    pr, include_diff=True, diff_viewer=diff_viewer
+                                )
+                                if analysis:
+                                    ai_analyzer.display_analysis(pr, analysis)
 
             elif choice == "3":
                 sha = Prompt.ask("\n[cyan]Enter commit SHA[/cyan]")
@@ -861,13 +942,14 @@ def interactive():
                     console.print(f"\n{commit}")
                     if Confirm.ask("Show diff?"):
                         diff_viewer.display_commit_diff(sha)
-                    if Confirm.ask("Analyze with AI?"):
-                        if ai_analyzer.is_available:
-                            analysis = ai_analyzer.analyze(
-                                commit, include_diff=True, diff_viewer=diff_viewer
-                            )
-                            if analysis:
-                                ai_analyzer.display_analysis(commit, analysis)
+                    if use_ai and ai_analyzer is not None:
+                        if Confirm.ask("Analyze with AI?", default=False):
+                            if ai_analyzer.is_available:
+                                analysis = ai_analyzer.analyze(
+                                    commit, include_diff=True, diff_viewer=diff_viewer
+                                )
+                                if analysis:
+                                    ai_analyzer.display_analysis(commit, analysis)
 
             elif choice == "4":
                 console.print("\n[cyan]Goodbye![/cyan]")
@@ -921,7 +1003,23 @@ def interactive():
     "use_chinese",
     is_flag=True,
     default=False,
-    help="Output AI analysis in Chinese",
+    help="Output AI analysis in Chinese (requires --ai)",
+)
+@click.option(
+    "--ai",
+    "use_ai",
+    is_flag=True,
+    default=False,
+    help="Enable AI analysis (requires CURSOR_AGENT_PATH)",
+)
+@click.option(
+    "--analyze",
+    "-a",
+    "use_ai_legacy",
+    is_flag=True,
+    default=False,
+    hidden=True,
+    help="alias of --ai",
 )
 def traverse(
     repo: Optional[str],
@@ -930,8 +1028,10 @@ def traverse(
     no_save_json_flag: bool,
     output_dir: Path,
     use_chinese: bool,
+    use_ai: bool,
+    use_ai_legacy: bool,
 ):
-    """Traverse recent PRs and analyze them with AI."""
+    """Traverse recent PRs and optionally analyze them with AI."""
     print_banner()
 
     if not check_prerequisites():
@@ -941,13 +1041,8 @@ def traverse(
         console.print("[red]Days must be a positive integer[/red]")
         sys.exit(1)
 
-    language = "cn" if use_chinese else "en"
-    ai_analyzer = AIAnalyzer(language=language)
-    if not ai_analyzer.is_available:
-        console.print(
-            "[red]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/red]"
-        )
-        sys.exit(1)
+    if use_ai_legacy:
+        use_ai = True
 
     save_json = resolve_json_export_flag(
         save_json_flag, no_save_json_flag, default=False, command_name="traverse"
@@ -969,60 +1064,81 @@ def traverse(
             console.print("[yellow]No PRs found in the specified range[/yellow]")
             return
 
-        diff_viewer = DiffViewer(repo_name=pr_collector.repo)
-
-        analyzed_items: List[Tuple[PullRequest, Optional[str]]] = []
-
-        # initialize exporter if save_json is enabled
-        exporter = None
-        if save_json:
-            exporter = PRJSONExporter(
-                repo_name=pr_collector.repo, output_dir=output_dir
-            )
-
-        def analyze_pr_group(prs: List[PullRequest], label: str) -> None:
-            if not prs:
-                console.print(f"[yellow]No {label.lower()} to analyze[/yellow]")
-                return
-
-            console.print(f"\n[bold cyan]Analyzing {label}...[/bold cyan]")
-
-            total = len(prs)
-            for index, pr in enumerate(prs, start=1):
+        if use_ai:
+            language = "cn" if use_chinese else "en"
+            ai_analyzer = AIAnalyzer(language=language)
+            if not ai_analyzer.is_available:
                 console.print(
-                    f"\n[bold]Analyzing {label[:-1]} {index}/{total}: PR #{pr.number}[/bold]"
+                    "[red]AI analysis not available. Please set CURSOR_AGENT_PATH environment variable[/red]"
                 )
-                analysis = ai_analyzer.analyze(
-                    pr,
-                    include_diff=True,
-                    diff_viewer=diff_viewer,
+                sys.exit(1)
+
+            diff_viewer = DiffViewer(repo_name=pr_collector.repo)
+
+            analyzed_items: List[Tuple[PullRequest, Optional[str]]] = []
+
+            exporter = None
+            if save_json:
+                exporter = PRJSONExporter(
+                    repo_name=pr_collector.repo, output_dir=output_dir
                 )
-                analyzed_items.append((pr, analysis))
-                if analysis:
-                    ai_analyzer.display_analysis(pr, analysis)
 
-                # save JSON immediately after each analysis
-                if save_json and exporter:
-                    try:
-                        file_path = exporter.export_pr(pr.number, title_hint=pr.title)
-                        console.print(f"[green]✓ JSON saved: {file_path}[/green]\n")
-                    except Exception as exc:
-                        console.print(f"[red]Failed to export PR #{pr.number}: {exc}[/red]\n")
+            def analyze_pr_group(prs: List[PullRequest], label: str) -> None:
+                if not prs:
+                    console.print(f"[yellow]No {label.lower()} to analyze[/yellow]")
+                    return
 
-        analyze_pr_group(merged_prs, "Merged PRs")
-        analyze_pr_group(open_prs, "Open PRs")
+                console.print(f"\n[bold cyan]Analyzing {label}...[/bold cyan]")
 
-        # save report automatically if save_json is enabled
-        if analyzed_items and save_json:
-            report = ai_analyzer.generate_summary_report(
-                analyzed_items,
-                query=f"Traversal analysis for last {days} days",
-            )
-            report_file = (
-                f"pr_traversal_report_{pr_collector.repo.replace('/', '_')}_{days}d.md"
-            )
-            Path(report_file).write_text(report)
-            console.print(f"[green]✓ Report saved to: {report_file}[/green]")
+                total = len(prs)
+                for index, pr in enumerate(prs, start=1):
+                    console.print(
+                        f"\n[bold]Analyzing {label[:-1]} {index}/{total}: PR #{pr.number}[/bold]"
+                    )
+                    analysis = ai_analyzer.analyze(
+                        pr,
+                        include_diff=True,
+                        diff_viewer=diff_viewer,
+                    )
+                    analyzed_items.append((pr, analysis))
+                    if analysis:
+                        ai_analyzer.display_analysis(pr, analysis)
+
+                    if save_json and exporter:
+                        try:
+                            file_path = exporter.export_pr(
+                                pr.number, title_hint=pr.title
+                            )
+                            console.print(f"[green]✓ JSON saved: {file_path}[/green]\n")
+                        except Exception as exc:
+                            console.print(
+                                f"[red]Failed to export PR #{pr.number}: {exc}[/red]\n"
+                            )
+
+            analyze_pr_group(merged_prs, "Merged PRs")
+            analyze_pr_group(open_prs, "Open PRs")
+
+            if analyzed_items and save_json:
+                report = ai_analyzer.generate_summary_report(
+                    analyzed_items,
+                    query=f"Traversal analysis for last {days} days",
+                )
+                report_file = (
+                    f"pr_traversal_report_{pr_collector.repo.replace('/', '_')}_{days}d.md"
+                )
+                Path(report_file).write_text(report)
+                console.print(f"[green]✓ Report saved to: {report_file}[/green]")
+        else:
+            if save_json:
+                pr_pairs: List[Tuple[int, Optional[str]]] = []
+                for pr in merged_prs:
+                    pr_pairs.append((pr.number, pr.title))
+                for pr in open_prs:
+                    pr_pairs.append((pr.number, pr.title))
+                if pr_pairs:
+                    export_pr_datasets(pr_collector.repo, pr_pairs, output_dir)
+                else:
+                    console.print("[yellow]No PR entries available for export[/yellow]")
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")

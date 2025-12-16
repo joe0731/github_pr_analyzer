@@ -69,17 +69,20 @@ ghpa check
 ghpa interactive
 
 # 2. AI 智能搜索 (英文输出)
-ghpa search "authentication bug" --analyze
+ghpa search "authentication bug" --ai
 
 # 3. AI 智能搜索 (中文输出)
-ghpa search "authentication bug" --analyze -cn
+ghpa search "authentication bug" --ai -cn
 
 # 4. 收集数据
 ghpa collect --save-json
 
 # 5. 生成日报/周报并导出
 ghpa traverse --days 7 --save-json
-ghpa traverse -r pytorch/pytorch --days 7 --save-json -cn
+ghpa traverse -r pytorch/pytorch --days 7 --save-json
+
+# 可选：开启 AI 分析（中文输出）
+ghpa traverse -r pytorch/pytorch --days 7 --save-json --ai -cn
 ```
 
 所有命令都提供成对的 `--save-json` / `--no-save-json` 开关，需要导出时随时打开，不想生成则显式关闭（例如 `view-pr` 默认导出，配合 `--no-save-json` 可跳过写入）。
@@ -90,9 +93,9 @@ ghpa traverse -r pytorch/pytorch --days 7 --save-json -cn
 
 ```bash
 # 中文输出
-ghpa search "quantization" -a -cn
-ghpa view-pr 588 -a -cn
-ghpa traverse --days 7 -cn
+ghpa search "quantization" --ai -cn
+ghpa view-pr 588 --ai -cn
+ghpa traverse --days 7 --ai -cn
 ```
 
 ## ✨ 主要特性

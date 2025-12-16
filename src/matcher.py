@@ -64,7 +64,7 @@ class MatchResult:
 class Matcher:
     """matcher for finding relevant PRs and commits based on queries."""
 
-    def __init__(self, fuzzy_threshold: int = 60, use_smart_search: bool = True):
+    def __init__(self, fuzzy_threshold: int = 60, use_smart_search: bool = False):
         """
         initialize matcher.
 

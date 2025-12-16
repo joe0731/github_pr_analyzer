@@ -31,14 +31,14 @@ Search for PRs and commits.
 ghpa search "query"
 
 # With AI analysis
-ghpa search "query" --analyze
+ghpa search "query" --ai
 
 # Options
 --repo, -r      Target repository (default: current)
 --months, -m    Months to look back (default: $DEFAULT_MONTHS or 3)
---analyze, -a   Enable AI analysis
+--ai            Enable AI analysis (requires CURSOR_AGENT_PATH)
 --show-diff, -d Show code changes
---smart-search  Enable/disable AI keyword extraction
+--smart-search  Enable/disable AI keyword extraction (requires --ai)
 --save-json     Save matched PRs as JSON datasets
 --output-dir    Directory for JSON files (default: gh_pr_exports)
 ```
@@ -58,7 +58,7 @@ ghpa traverse --days 7 --save-json
 ### `view-pr` / `view-commit`
 View details of a specific item.
 ```bash
-ghpa view-pr 123 --analyze --output-dir ./exports   # JSON export enabled by default
+ghpa view-pr 123 --ai --output-dir ./exports   # JSON export enabled by default
 ghpa view-commit <SHA>
 ```
 
@@ -71,6 +71,6 @@ ghpa view-commit <SHA>
 
 The tool is configured via environment variables:
 
-- **`CURSOR_AGENT_PATH`**: Path to `cursor-agent` executable. **Required** for `--analyze` and Smart Search.
+- **`CURSOR_AGENT_PATH`**: Path to `cursor-agent` executable. Required for `--ai` and Smart Search.
 - **`DEFAULT_MONTHS`**: Default months to look back in `collect` and `search` (Default: 3).
 - **`DEFAULT_REPO_PATH`**: Default path to look for git repo (Default: current dir).

@@ -68,18 +68,21 @@ ghpa check
 # 1. Interactive Mode (Best for starting)
 ghpa interactive
 
-# 2. Search with AI Analysis (English output)
-ghpa search "authentication bug" --analyze
+# 2. Search with AI analysis (English output)
+ghpa search "authentication bug" --ai
 
-# 3. Search with AI Analysis (Chinese output)
-ghpa search "authentication bug" --analyze -cn
+# 3. Search with AI analysis (Chinese output)
+ghpa search "authentication bug" --ai -cn
 
 # 4. Collect Data
 ghpa collect --save-json
 
 # 5. Generate Daily/Weekly Report + Export Datasets
 ghpa traverse --days 7 --save-json
-ghpa traverse -r pytorch/pytorch --days 7 --save-json -cn
+ghpa traverse -r pytorch/pytorch --days 7 --save-json
+
+# optional: enable AI analysis for traverse
+ghpa traverse -r pytorch/pytorch --days 7 --save-json --ai -cn
 ```
 
 All CLI workflows expose matching `--save-json` / `--no-save-json` toggles so you can enable exports when needed and opt out (for example, disable the default `view-pr` export with `--no-save-json`).
@@ -90,9 +93,9 @@ Use `-cn` or `--chinese` flag to get AI analysis output in Chinese:
 
 ```bash
 # Chinese output
-ghpa search "quantization" -a -cn
-ghpa view-pr 588 -a -cn
-ghpa traverse --days 7 -cn
+ghpa search "quantization" --ai -cn
+ghpa view-pr 588 --ai -cn
+ghpa traverse --days 7 --ai -cn
 ```
 
 ## ✨ Features
