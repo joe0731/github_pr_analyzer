@@ -15,7 +15,7 @@ GitHub PR & Commit Analyzer is a production-grade command-line tool for intellig
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│               CLI Interface (gh-pr-analyzer)            │
+│               CLI Interface (ghpa)                     │
 │  - Command parsing (Click)                              │
 │  - User interaction (Rich)                              │
 └──────────────┬──────────────────────────────────────────┘
@@ -43,7 +43,7 @@ GitHub PR & Commit Analyzer is a production-grade command-line tool for intellig
 
 ### Modules
 
-- **src/cli.py**: Entry point (`gh-pr-analyzer`), handles commands (`search`, `collect`, `traverse`, etc.).
+- **src/cli.py**: Entry point (`ghpa`, legacy: `gh-pr-analyzer`), handles commands (`search`, `collect`, `traverse`, etc.).
 - **src/pr_collector.py**: Wraps GitHub CLI (`gh`) to fetch PR data.
 - **src/commit_collector.py**: Uses GitPython to inspect local git history.
 - **src/matcher.py**: Implements fuzzy search and AI keyword extraction.

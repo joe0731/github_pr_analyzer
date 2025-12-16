@@ -25,5 +25,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-__version__ = "3.0.6"
+__version__ = "3.0.7"
 __author__ = "GitHub PR Analyzer Team"

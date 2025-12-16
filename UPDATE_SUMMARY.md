@@ -7,7 +7,7 @@
 ### 1. ✅ PyPI Release (v3.0.4)
 - Project packaged and uploaded to PyPI.
 - Installation simplified to `pip install github-pr-analyzer`.
-- New entry point `gh-pr-analyzer` created.
+- New entry point `ghpa` created (`gh-pr-analyzer` kept as legacy alias).
 
 ### 2. ✅ Documentation Overhaul
 - All documentation updated to reflect PyPI installation.
@@ -21,5 +21,5 @@
 
 ## Verification Checklist
 - [x] `pip install github-pr-analyzer` works
-- [x] `gh-pr-analyzer --help` works
+- [x] `ghpa --help` works
 - [x] Documentation reflects current state

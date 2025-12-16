@@ -13,7 +13,7 @@
 - 📦 **PyPI 发布**: 现已发布到 PyPI，包名为 `github-pr-analyzer`。
 - 📅 **遍历命令**: 新增 `traverse` 命令，用于批量分析近期 PR。
 - 🛠️ **简化安装**: 支持通过 `pip install` 安装。
-- ⚡ **入口点**: 新增 `gh-pr-analyzer` CLI 命令。
+- ⚡ **入口点**: 新增 `ghpa` CLI 命令（兼容旧命令 `gh-pr-analyzer`）。
 
 ## [2.0.0] - 2025-01-21
 

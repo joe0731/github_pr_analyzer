@@ -17,7 +17,7 @@ SUMMARY OF CHANGES
 1. PyPI Release (v3.0.4)
    - Package available via pip install
    - Simplified installation process
-   - New CLI entry point: gh-pr-analyzer
+   - New CLI entry point: ghpa (legacy: gh-pr-analyzer)
 
 2. Documentation
    - Updated to reflect pip installation
@@ -36,6 +36,6 @@ QUICK START
    pip install github-pr-analyzer
 
 2. Usage:
-   gh-pr-analyzer interactive
+   ghpa interactive
 
 ================================================================================

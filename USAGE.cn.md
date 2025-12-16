@@ -7,17 +7,17 @@
 ### `interactive` (交互模式)
 启动菜单驱动的界面。推荐首次使用者使用。
 ```bash
-gh-pr-analyzer interactive
+ghpa interactive
 ```
 
 ### `search` (搜索)
 搜索 PR 和 commits。
 ```bash
 # 基本搜索
-gh-pr-analyzer search "query"
+ghpa search "query"
 
 # 带 AI 分析
-gh-pr-analyzer search "query" --analyze
+ghpa search "query" --analyze
 
 # 选项
 --repo, -r      目标仓库 (默认: 当前仓库)
@@ -32,20 +32,20 @@ gh-pr-analyzer search "query" --analyze
 ### `collect` (收集)
 收集统计信息 (开放/已合并 PR, commits)。
 ```bash
-gh-pr-analyzer collect --months 6 --save-json --output-dir ./exports
+ghpa collect --months 6 --save-json --output-dir ./exports
 ```
 
 ### `traverse` (遍历)
 批量分析近期 PR，适用于生成报告。
 ```bash
-gh-pr-analyzer traverse --days 7 --save-json
+ghpa traverse --days 7 --save-json
 ```
 
 ### `view-pr` / `view-commit` (查看详情)
 查看特定项目的详细信息。
 ```bash
-gh-pr-analyzer view-pr 123 --analyze --output-dir ./exports   # 默认开启 JSON 导出
-gh-pr-analyzer view-commit <SHA>
+ghpa view-pr 123 --analyze --output-dir ./exports   # 默认开启 JSON 导出
+ghpa view-commit <SHA>
 ```
 
 ### JSON 导出提示

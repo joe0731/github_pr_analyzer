@@ -31,16 +31,16 @@
 ================================================================================
 
 $ pip install github-pr-analyzer
-$ gh-pr-analyzer interactive
+$ ghpa interactive
 
 ================================================================================
 主要命令
 ================================================================================
 
-gh-pr-analyzer search "query"
-gh-pr-analyzer collect
-gh-pr-analyzer traverse --days 7
-gh-pr-analyzer view-pr <id>
-gh-pr-analyzer view-commit <sha>
+ghpa search "query"
+ghpa collect
+ghpa traverse --days 7
+ghpa view-pr <id>
+ghpa view-commit <sha>
 
 ================================================================================

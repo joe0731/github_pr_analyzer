@@ -14,7 +14,7 @@
 
 ### ✅ Core Functional Modules
 
-- **CLI**: `gh-pr-analyzer` entry point with `click`
+- **CLI**: `ghpa` entry point with `click` (legacy: `gh-pr-analyzer`)
 - **Collectors**: GitHub API (via `gh`) and Git local history
 - **Search**: AI-powered and Fuzzy matching
 - **Analysis**: Integration with `cursor-agent`

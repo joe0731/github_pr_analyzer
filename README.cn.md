@@ -37,20 +37,20 @@ export DEFAULT_MONTHS=6
 
 ```bash
 # 1. 交互模式 (推荐新手使用)
-gh-pr-analyzer interactive
+ghpa interactive
 
 # 2. AI 智能搜索 (英文输出)
-gh-pr-analyzer search "authentication bug" --analyze
+ghpa search "authentication bug" --analyze
 
 # 3. AI 智能搜索 (中文输出)
-gh-pr-analyzer search "authentication bug" --analyze -cn
+ghpa search "authentication bug" --analyze -cn
 
 # 4. 收集数据
-gh-pr-analyzer collect --save-json
+ghpa collect --save-json
 
 # 5. 生成日报/周报并导出
-gh-pr-analyzer traverse --days 7 --save-json
-gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json -cn
+ghpa traverse --days 7 --save-json
+ghpa traverse -r pytorch/pytorch --days 7 --save-json -cn
 ```
 
 所有命令都提供成对的 `--save-json` / `--no-save-json` 开关，需要导出时随时打开，不想生成则显式关闭（例如 `view-pr` 默认导出，配合 `--no-save-json` 可跳过写入）。
@@ -61,9 +61,9 @@ gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json -cn
 
 ```bash
 # 中文输出
-gh-pr-analyzer search "quantization" -a -cn
-gh-pr-analyzer view-pr 588 -a -cn
-gh-pr-analyzer traverse --days 7 -cn
+ghpa search "quantization" -a -cn
+ghpa view-pr 588 -a -cn
+ghpa traverse --days 7 -cn
 ```
 
 ## ✨ 主要特性

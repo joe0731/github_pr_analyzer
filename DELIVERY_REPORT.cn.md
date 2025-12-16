@@ -14,7 +14,7 @@
 
 ### ✅ 核心功能模块
 
-- **CLI**: `gh-pr-analyzer` 命令行入口 (基于 `click`)
+- **CLI**: `ghpa` 命令行入口 (基于 `click`，兼容旧命令 `gh-pr-analyzer`)
 - **收集器**: GitHub API (通过 `gh`) 和 Git 本地历史
 - **搜索**: AI 驱动和模糊匹配
 - **分析**: 集成 `cursor-agent`

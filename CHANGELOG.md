@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 📦 **PyPI Release**: Package is now available on PyPI as `github-pr-analyzer`.
 - 📅 **Traverse Command**: New `traverse` command for batch analysis of recent PRs.
 - 🛠️ **Simplified Installation**: Installation via `pip install`.
-- ⚡ **Entry Point**: New `gh-pr-analyzer` CLI command.
+- ⚡ **Entry Point**: New `ghpa` CLI command (legacy: `gh-pr-analyzer`).
 
 ## [2.0.0] - 2025-01-21
 

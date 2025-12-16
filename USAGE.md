@@ -7,17 +7,17 @@
 ### `interactive`
 Launch the menu-driven interface. Best for first-time users.
 ```bash
-gh-pr-analyzer interactive
+ghpa interactive
 ```
 
 ### `search`
 Search for PRs and commits.
 ```bash
 # Basic
-gh-pr-analyzer search "query"
+ghpa search "query"
 
 # With AI analysis
-gh-pr-analyzer search "query" --analyze
+ghpa search "query" --analyze
 
 # Options
 --repo, -r      Target repository (default: current)
@@ -32,20 +32,20 @@ gh-pr-analyzer search "query" --analyze
 ### `collect`
 Collect statistics (open/merged PRs, commits).
 ```bash
-gh-pr-analyzer collect --months 6 --save-json --output-dir ./exports
+ghpa collect --months 6 --save-json --output-dir ./exports
 ```
 
 ### `traverse`
 Batch analyze recent PRs for reports.
 ```bash
-gh-pr-analyzer traverse --days 7 --save-json
+ghpa traverse --days 7 --save-json
 ```
 
 ### `view-pr` / `view-commit`
 View details of a specific item.
 ```bash
-gh-pr-analyzer view-pr 123 --analyze --output-dir ./exports   # JSON export enabled by default
-gh-pr-analyzer view-commit <SHA>
+ghpa view-pr 123 --analyze --output-dir ./exports   # JSON export enabled by default
+ghpa view-commit <SHA>
 ```
 
 ### JSON Export Notes

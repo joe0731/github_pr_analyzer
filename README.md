@@ -37,20 +37,20 @@ export DEFAULT_MONTHS=6
 
 ```bash
 # 1. Interactive Mode (Best for starting)
-gh-pr-analyzer interactive
+ghpa interactive
 
 # 2. Search with AI Analysis (English output)
-gh-pr-analyzer search "authentication bug" --analyze
+ghpa search "authentication bug" --analyze
 
 # 3. Search with AI Analysis (Chinese output)
-gh-pr-analyzer search "authentication bug" --analyze -cn
+ghpa search "authentication bug" --analyze -cn
 
 # 4. Collect Data
-gh-pr-analyzer collect --save-json
+ghpa collect --save-json
 
 # 5. Generate Daily/Weekly Report + Export Datasets
-gh-pr-analyzer traverse --days 7 --save-json
-gh-pr-analyzer traverse -r pytorch/pytorch --days 7 --save-json -cn
+ghpa traverse --days 7 --save-json
+ghpa traverse -r pytorch/pytorch --days 7 --save-json -cn
 ```
 
 All CLI workflows expose matching `--save-json` / `--no-save-json` toggles so you can enable exports when needed and opt out (for example, disable the default `view-pr` export with `--no-save-json`).
@@ -61,9 +61,9 @@ Use `-cn` or `--chinese` flag to get AI analysis output in Chinese:
 
 ```bash
 # Chinese output
-gh-pr-analyzer search "quantization" -a -cn
-gh-pr-analyzer view-pr 588 -a -cn
-gh-pr-analyzer traverse --days 7 -cn
+ghpa search "quantization" -a -cn
+ghpa view-pr 588 -a -cn
+ghpa traverse --days 7 -cn
 ```
 
 ## ✨ Features
