@@ -12,7 +12,33 @@ A powerful command-line tool for intelligently collecting, analyzing, and summar
 ### 1. Prerequisites
 - **Python 3.8+**
 - **Git**
-- **GitHub CLI (gh)**: Must be logged in (`gh auth login`)
+- **GitHub CLI (gh)**: Must be installed and logged in (`gh auth login`)
+
+### Install GitHub CLI (gh)
+
+- **macOS (Homebrew)**:
+
+```bash
+brew install gh
+gh auth login
+```
+
+- **Linux (APT, Ubuntu/Debian)**:
+
+```bash
+sudo apt update
+sudo apt install -y gh
+gh auth login
+```
+
+- **Windows (Winget)**:
+
+```powershell
+winget install --id GitHub.cli
+gh auth login
+```
+
+> Daily usage tip: use the short command `ghpa` (legacy: `gh-pr-analyzer`).
 
 ### 2. Install
 ```bash

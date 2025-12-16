@@ -12,7 +12,33 @@
 ### 1. 前置要求
 - **Python 3.8+**
 - **Git**
-- **GitHub CLI (gh)**: 必须完成登录 (`gh auth login`)
+- **GitHub CLI (gh)**: 必须安装并完成登录（`gh auth login`）
+
+### 安装 GitHub CLI（gh）
+
+- **macOS（Homebrew）**：
+
+```bash
+brew install gh
+gh auth login
+```
+
+- **Linux（APT，Ubuntu/Debian）**：
+
+```bash
+sudo apt update
+sudo apt install -y gh
+gh auth login
+```
+
+- **Windows（Winget）**：
+
+```powershell
+winget install --id GitHub.cli
+gh auth login
+```
+
+> 日常使用建议：用短命令 `ghpa`（兼容旧命令 `gh-pr-analyzer`）。
 
 ### 2. 安装
 ```bash
