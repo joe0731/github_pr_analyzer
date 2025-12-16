@@ -62,6 +62,9 @@ export DEFAULT_MONTHS=6
 ## 📖 Quick Start
 
 ```bash
+# 0. Check connectivity (recommended after setting env vars)
+ghpa check
+
 # 1. Interactive Mode (Best for starting)
 ghpa interactive
 

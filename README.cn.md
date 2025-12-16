@@ -62,6 +62,9 @@ export DEFAULT_MONTHS=6
 ## 📖 快速开始
 
 ```bash
+# 0. 检查连通性（推荐配置完环境变量后先跑一次）
+ghpa check
+
 # 1. 交互模式 (推荐新手使用)
 ghpa interactive
 

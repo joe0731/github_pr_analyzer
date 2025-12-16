@@ -4,6 +4,20 @@
 
 ## 命令详解
 
+### `check` (连通性检查)
+验证环境变量配置和 GitHub API 连通性。
+
+```bash
+# 基础检查
+ghpa check
+
+# 检查某个 repo 的访问权限
+ghpa check -r owner/repo
+
+# 输出 JSON（便于自动化）
+ghpa check --json
+```
+
 ### `interactive` (交互模式)
 启动菜单驱动的界面。推荐首次使用者使用。
 ```bash

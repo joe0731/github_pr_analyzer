@@ -35,7 +35,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 
 from .config import config
-from .utils import check_gh_cli, check_git, format_datetime
+from .utils import check_gh_cli, check_git, format_datetime, run_command, validate_repo_format
 from .pr_collector import PRCollector, PullRequest
 from .commit_collector import CommitCollector
 from .diff_viewer import DiffViewer
@@ -234,6 +234,115 @@ def resolve_json_export_flag(
 def cli():
     """GitHub PR and Commit Analyzer - Find and analyze relevant changes."""
     pass
+
+
+@cli.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.option(
+    "--repo",
+    "-r",
+    help="Repository in format owner/repo (optional; used to verify repo access)",
+)
+@click.option("--json", "as_json", is_flag=True, help="Output raw JSON for automation")
+def check(repo: Optional[str], as_json: bool):
+    """Check environment configuration and GitHub API connectivity."""
+    print_banner()
+
+    ok = True
+    details: dict = {"ok": False, "checks": [], "repo": repo}
+
+    # basic tools
+    git_ok = check_git()
+    details["checks"].append({"name": "git", "ok": git_ok})
+    if git_ok:
+        console.print("[green]✓ git found[/green]")
+    else:
+        console.print("[red]✗ git not found[/red]")
+        ok = False
+
+    gh_ok = check_gh_cli()
+    details["checks"].append({"name": "gh", "ok": gh_ok})
+    if gh_ok:
+        console.print("[green]✓ gh authenticated[/green]")
+    else:
+        console.print("[red]✗ gh not ready (install and run: gh auth login)[/red]")
+        ok = False
+
+    # config validation (ai path etc)
+    is_valid, config_errors = config.validate()
+    details["checks"].append(
+        {"name": "config", "ok": is_valid, "warnings": list(config_errors)}
+    )
+    if (not is_valid) and config_errors:
+        for error in config_errors:
+            console.print("[yellow]- {0}[/yellow]".format(error))
+
+    # api connectivity via gh api
+    user_login = None
+    api_ok = False
+    api_error = None
+    try:
+        _, stdout, _ = run_command(["gh", "api", "user", "--jq", ".login"], check=True)
+        user_login = stdout.strip()
+        if user_login:
+            api_ok = True
+    except Exception as exc:
+        api_error = str(exc)
+        api_ok = False
+        ok = False
+
+    details["checks"].append(
+        {"name": "gh_api_user", "ok": api_ok, "login": user_login, "error": api_error}
+    )
+    if api_ok:
+        console.print("[green]✓ github api ok[/green]")
+        console.print("[green]✓ user: {0}[/green]".format(user_login))
+    else:
+        console.print("[red]✗ github api failed[/red]")
+        if api_error:
+            console.print("[red]{0}[/red]".format(api_error))
+
+    # optional: verify repo access
+    repo_ok = None
+    repo_error = None
+    if repo:
+        if not validate_repo_format(repo):
+            repo_ok = False
+            repo_error = "invalid repo format. expected owner/repo"
+            ok = False
+        else:
+            try:
+                _, stdout, _ = run_command(
+                    ["gh", "repo", "view", repo, "--json", "nameWithOwner,url"],
+                    check=True,
+                )
+                if stdout.strip():
+                    repo_ok = True
+                else:
+                    repo_ok = False
+            except Exception as exc:
+                repo_ok = False
+                repo_error = str(exc)
+                ok = False
+
+        details["checks"].append(
+            {"name": "repo_access", "ok": repo_ok, "repo": repo, "error": repo_error}
+        )
+        if repo_ok:
+            console.print("[green]✓ repo access ok: {0}[/green]".format(repo))
+        else:
+            console.print("[red]✗ repo access failed: {0}[/red]".format(repo))
+            if repo_error:
+                console.print("[red]{0}[/red]".format(repo_error))
+
+    details["ok"] = ok
+
+    if as_json:
+        import json as _json
+
+        console.print(_json.dumps(details, ensure_ascii=False, indent=2))
+
+    if not ok:
+        sys.exit(1)
 
 
 @cli.command(context_settings={"help_option_names": ["-h", "--help"]})

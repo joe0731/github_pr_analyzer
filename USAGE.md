@@ -4,6 +4,20 @@
 
 ## Commands
 
+### `check`
+Verify environment configuration and GitHub API connectivity.
+
+```bash
+# basic
+ghpa check
+
+# verify repo access
+ghpa check -r owner/repo
+
+# raw JSON for automation
+ghpa check --json
+```
+
 ### `interactive`
 Launch the menu-driven interface. Best for first-time users.
 ```bash
